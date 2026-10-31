@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="cv-header">
+    <div class="header-container">
+        <div class="header-main">
+            <div class="avatar-badge">
+                <span class="avatar-initials">AM</span>
+            </div>
+            <div class="header-titles">
+                <h1 class="candidate-name">{{ cv.personal.name }}</h1>
+                <div class="candidate-role-badge">
+                    <span class="role-icon">⚡</span>
+                    <span class="candidate-title">{{ cv.personal.title }}</span>
+                </div>
+                <div class="contact-grid">
+                    <a href="mailto:{{ cv.personal.email }}" class="contact-pill" title="Click to email, or use copy button">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                        <span>{{ cv.personal.email }}</span>
+                        <button type="button" class="copy-btn" data-copy="{{ cv.personal.email }}" title="Copy Email" aria-label="Copy Email">
+                            <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                    </a>
+                    <a href="tel:{{ cv.personal.phone }}" class="contact-pill">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                        <span>{{ cv.personal.phone }}</span>
+                        <button type="button" class="copy-btn" data-copy="{{ cv.personal.phone }}" title="Copy Phone Number" aria-label="Copy Phone Number">
+                            <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                    </a>
+                    <div class="contact-pill static-pill">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        <span>{{ cv.personal.location }}</span>
+                    </div>
+                    <a href="{{ cv.personal.linkedin }}" target="_blank" rel="noopener noreferrer" class="contact-pill">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                        <span>{{ cv.personal.linkedin_display }}</span>
+                        <svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="action-buttons-group">
+                <a href="{{ url_for('download_pdf') }}" class="btn btn-primary" title="Download CV as PDF">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span>Download PDF</span>
+                </a>
+                <button type="button" onclick="window.print()" class="btn btn-secondary" title="Print or Save as PDF">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    <span>Print</span>
+                </button>
+                <button type="button" id="theme-toggle" class="btn btn-icon-only" aria-label="Toggle Dark/Light Mode" title="Toggle theme">
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Highlights Banner -->
+    <div class="highlights-grid">
+        {% for item in cv.personal.highlights %}
+        <div class="highlight-card">
+            <span class="highlight-val">{{ item.value }}</span>
+            <span class="highlight-label">{{ item.label }}</span>
+            <span class="highlight-desc">{{ item.desc }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</header>
+
+<main class="cv-main-layout">
+    <div class="cv-left-column">
+        <!-- Profile / Summary -->
+        <section class="cv-card section-profile">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="section-icon">👤</span>
+                    <h2>Professional Profile</h2>
+                </div>
+            </div>
+            <p class="profile-text">{{ cv.personal.summary }}</p>
+        </section>
+
+        <!-- Work Experience -->
+        <section class="cv-card section-experience">
+            <div class="section-header experience-header">
+                <div class="section-title-wrap">
+                    <span class="section-icon">💼</span>
+                    <h2>Work Experience</h2>
+                </div>
+                <div class="exp-search-box">
+                    <input type="text" id="exp-filter-input" placeholder="Filter experience by keyword (e.g. Spark, Airflow, GCP)..." aria-label="Filter experience items">
+                </div>
+            </div>
+
+            <div class="timeline" id="experience-timeline">
+                {% for exp in cv.experience %}
+                <article class="timeline-item" data-tech="{{ exp.key_technologies | join(' ') | lower }}" data-company="{{ exp.company | lower }}" data-role="{{ exp.role | lower }}">
+                    <div class="timeline-marker">
+                        <div class="marker-dot {% if exp.is_current %}active-marker{% endif %}"></div>
+                        <div class="marker-line"></div>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="exp-header-row">
+                            <div>
+                                <h3 class="exp-role">{{ exp.role }}</h3>
+                                <div class="exp-company-location">
+                                    <span class="exp-company">{{ exp.company }}</span>
+                                    <span class="bullet-separator">•</span>
+                                    <span class="exp-location">{{ exp.location }}</span>
+                                </div>
+                            </div>
+                            <div class="exp-meta">
+                                <span class="exp-period-badge {% if exp.is_current %}current-badge{% endif %}">{{ exp.period }}</span>
+                            </div>
+                        </div>
+
+                        <ul class="exp-responsibilities">
+                            {% for resp in exp.responsibilities %}
+                            <li>{{ resp }}</li>
+                            {% endfor %}
+                        </ul>
+
+                        {% if exp.key_technologies %}
+                        <div class="exp-tech-tags">
+                            {% for tech in exp.key_technologies %}
+                            <span class="tech-tag" data-tag="{{ tech | lower }}">{{ tech }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <aside class="cv-right-column">
+        <!-- Skills -->
+        <section class="cv-card section-skills">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="section-icon">🛠️</span>
+                    <h2>Skills & Expertise</h2>
+                </div>
+            </div>
+
+            <div class="skills-category-group">
+                {% for category, items in cv.skills.items() %}
+                <div class="skill-category-block">
+                    <h4 class="category-title">{{ category }}</h4>
+                    <div class="skill-pills-wrap">
+                        {% for skill in items %}
+                        <span class="skill-pill" data-skill="{{ skill | lower }}">{{ skill }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Certifications -->
+        <section class="cv-card section-certifications">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="section-icon">📜</span>
+                    <h2>Certifications</h2>
+                </div>
+            </div>
+
+            <div class="certifications-list">
+                {% for cert in cv.certifications %}
+                <div class="cert-item">
+                    <div class="cert-icon-col">
+                        <span class="cert-badge-icon">🎖️</span>
+                    </div>
+                    <div class="cert-details">
+                        <h4 class="cert-title">{{ cert.title }}</h4>
+                        <div class="cert-meta">
+                            <span class="cert-issuer">{{ cert.issuer }}</span>
+                            <span class="bullet-separator">•</span>
+                            <span class="cert-date">{{ cert.date }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Education -->
+        <section class="cv-card section-education">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="section-icon">🎓</span>
+                    <h2>Education</h2>
+                </div>
+            </div>
+
+            <div class="education-list">
+                {% for edu in cv.education %}
+                <div class="edu-item">
+                    <h4 class="edu-degree">{{ edu.degree }}</h4>
+                    <div class="edu-institution">{{ edu.institution }}</div>
+                    <div class="edu-meta">
+                        <span class="edu-location">{{ edu.location }}</span>
+                        <span class="bullet-separator">•</span>
+                        <span class="edu-period">{{ edu.period }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Languages -->
+        <section class="cv-card section-languages">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="section-icon">🌐</span>
+                    <h2>Languages</h2>
+                </div>
+            </div>
+
+            <div class="languages-list">
+                {% for lang in cv.languages %}
+                <div class="language-item">
+                    <span class="language-name">{{ lang.name }}</span>
+                    <span class="language-level">{{ lang.level }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Courses -->
+        <section class="cv-card section-courses">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="section-icon">📚</span>
+                    <h2>Relevant Courses</h2>
+                </div>
+            </div>
+
+            <ul class="courses-list">
+                {% for course in cv.courses %}
+                <li>{{ course }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </aside>
+</main>
+
+<footer class="cv-footer">
+    <div class="footer-content">
+        <p>{{ cv.personal.name }} — {{ cv.personal.title }} • Built with Python & Flask</p>
+        <div class="footer-links">
+            <a href="{{ url_for('api_cv') }}" target="_blank">JSON API</a>
+            <span class="bullet-separator">•</span>
+            <a href="{{ url_for('download_pdf') }}">PDF Version</a>
+        </div>
+    </div>
+</footer>
+{% endblock %}
