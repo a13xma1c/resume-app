@@ -64,10 +64,18 @@ def test_defaults_when_environment_is_empty() -> None:
     assert cfg["MAIL_PASSWORD"] is None
     assert cfg["MAIL_DEFAULT_SENDER"] == "no-reply@localhost"
     assert cfg["MAIL_SUPPRESS_SEND"] is False
+    assert cfg["MAIL_KEEPALIVE"] is True
     assert cfg["MAIL_TIMEOUT"] == 10
     assert cfg["SESSION_COOKIE_HTTPONLY"] is True
     assert cfg["SESSION_COOKIE_SAMESITE"] == "Lax"
+    assert cfg["SESSION_COOKIE_SECURE"] is False
+    assert cfg["PREFERRED_URL_SCHEME"] == "http"
     assert cfg["MAX_CONTENT_LENGTH"] == 64 * 1024
+    assert cfg["TRUSTED_PROXIES"] == 0
+    assert cfg["HSTS_ENABLED"] is False
+    assert cfg["HSTS_MAX_AGE"] == 31_536_000
+    assert cfg["SEND_FILE_MAX_AGE_DEFAULT"] == 31_536_000
+    assert cfg["API_CACHE_MAX_AGE"] == 300
 
 
 def test_ephemeral_secret_keys_differ_between_loads() -> None:
@@ -90,6 +98,7 @@ def test_full_environment_is_honoured() -> None:
         "MAIL_USE_TLS": "false",
         "MAIL_DEFAULT_SENDER": "cv@example.com",
         "MAIL_SUPPRESS_SEND": "1",
+        "MAIL_KEEPALIVE": "0",
         "MAIL_TIMEOUT": "30",
     }
     cfg = load_config(env)
@@ -108,6 +117,7 @@ def test_full_environment_is_honoured() -> None:
     assert cfg["MAIL_USE_TLS"] is False
     assert cfg["MAIL_DEFAULT_SENDER"] == "cv@example.com"
     assert cfg["MAIL_SUPPRESS_SEND"] is True
+    assert cfg["MAIL_KEEPALIVE"] is False
     assert cfg["MAIL_TIMEOUT"] == 30
 
 
@@ -140,10 +150,30 @@ def test_empty_subject_prefix_is_allowed() -> None:
     assert load_config({"CONTACT_SUBJECT_PREFIX": ""})["CONTACT_SUBJECT_PREFIX"] == ""
 
 
+def test_deployment_settings_from_env() -> None:
+    cfg = load_config(
+        {
+            "SESSION_COOKIE_SECURE": "true",
+            "HSTS_ENABLED": "false",
+            "TRUSTED_PROXIES": "1",
+            "STATIC_MAX_AGE": "60",
+            "API_CACHE_MAX_AGE": "0",
+        }
+    )
+    assert cfg["SESSION_COOKIE_SECURE"] is True
+    assert cfg["PREFERRED_URL_SCHEME"] == "https"
+    assert cfg["HSTS_ENABLED"] is False  # explicit override wins over the secure-cookie default
+    assert cfg["TRUSTED_PROXIES"] == 1
+    assert cfg["SEND_FILE_MAX_AGE_DEFAULT"] == 60
+    assert cfg["API_CACHE_MAX_AGE"] == 0
+
+
 @pytest.mark.parametrize(
     "env",
     [
         {"CONTACT_RATE_LIMIT": "-1"},
+        {"TRUSTED_PROXIES": "-1"},
+        {"HSTS_MAX_AGE": "-5"},
         {"CONTACT_RATE_WINDOW": "0"},
         {"MAIL_PORT": "not-a-port"},
         {"MAIL_USE_TLS": "sometimes"},

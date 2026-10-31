@@ -5,15 +5,16 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, Response, render_template
+from flask import Flask, render_template
 from werkzeug.exceptions import HTTPException
 
 from .config import BASE_DIR, load_config, parse_bool
 from .cv_data import CV_DATA
+from .http import init_http
 from .mail import ConsoleMailer, Mailer, SMTPMailer
 from .security import RateLimiter, generate_csrf_token
 from .views import api_bp, contact_bp, pages_bp
@@ -26,12 +27,6 @@ NAV_ITEMS = (
     ("pages.full_cv", "Full CV"),
     ("contact.contact", "Contact"),
 )
-
-SECURITY_HEADERS = {
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-}
 
 
 def create_mailer(config: Mapping[str, Any], logger: logging.Logger) -> Mailer:
@@ -50,6 +45,7 @@ def create_mailer(config: Mapping[str, Any], logger: logging.Logger) -> Mailer:
         use_tls=config.get("MAIL_USE_TLS", True),
         use_ssl=config.get("MAIL_USE_SSL", False),
         timeout=config.get("MAIL_TIMEOUT", 10),
+        keepalive=config.get("MAIL_KEEPALIVE", True),
     )
 
 
@@ -71,6 +67,8 @@ def create_app(
     app.config.from_mapping(load_config())
     if test_config:
         app.config.from_mapping(test_config)
+        if test_config.get("SECRET_KEY"):
+            app.config["SECRET_KEY_IS_EPHEMERAL"] = False
 
     if app.config.get("SECRET_KEY_IS_EPHEMERAL") and not app.testing:
         app.logger.warning(
@@ -84,6 +82,7 @@ def create_app(
     app.register_blueprint(pages_bp)
     app.register_blueprint(contact_bp)
     app.register_blueprint(api_bp)
+    init_http(app)
 
     @app.context_processor
     def inject_globals() -> dict[str, Any]:
@@ -91,15 +90,9 @@ def create_app(
             "cv": CV_DATA,
             "nav_items": NAV_ITEMS,
             "csrf_token": generate_csrf_token,
-            "current_year": datetime.now(timezone.utc).year,
+            "current_year": datetime.now(UTC).year,
             "contact_recipient": app.config["CONTACT_RECIPIENT"],
         }
-
-    @app.after_request
-    def set_security_headers(response: Response) -> Response:
-        for header, value in SECURITY_HEADERS.items():
-            response.headers.setdefault(header, value)
-        return response
 
     @app.errorhandler(HTTPException)
     def handle_http_error(error: HTTPException) -> tuple[str, int]:

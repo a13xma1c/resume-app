@@ -67,6 +67,7 @@ def test_all_expected_routes_are_registered() -> None:
         "/cv": {"GET"},
         "/contact": {"GET", "POST"},
         "/api/cv": {"GET"},
+        "/healthz": {"GET"},
         "/download-pdf": {"GET"},
         "/view-pdf": {"GET"},
     }
@@ -87,6 +88,7 @@ def test_blueprint_endpoint_names() -> None:
         "contact.contact",
         "contact.submit",
         "api.cv",
+        "api.healthz",
         "api.download_pdf",
         "api.view_pdf",
         "static",
@@ -128,6 +130,16 @@ def test_no_secret_key_warning_when_provided(monkeypatch: pytest.MonkeyPatch, ca
     assert "SECRET_KEY is not set" not in caplog.text
 
 
+def test_no_secret_key_warning_when_provided_via_test_config(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    with caplog.at_level(logging.WARNING):
+        app = create_app({"SECRET_KEY": "from-config"})
+    assert app.config["SECRET_KEY_IS_EPHEMERAL"] is False
+    assert "SECRET_KEY is not set" not in caplog.text
+
+
 # --- create_mailer -------------------------------------------------------------
 
 
@@ -154,12 +166,14 @@ def test_create_mailer_smtp_from_config() -> None:
         "MAIL_USE_TLS": False,
         "MAIL_USE_SSL": True,
         "MAIL_TIMEOUT": 3,
+        "MAIL_KEEPALIVE": False,
     }
     mailer = create_mailer(config, logging.getLogger("x"))
     assert isinstance(mailer, SMTPMailer)
     assert (mailer.host, mailer.port) == ("smtp.example.com", 2525)
     assert (mailer.username, mailer.password) == ("u", "p")
     assert (mailer.use_tls, mailer.use_ssl, mailer.timeout) == (False, True, 3)
+    assert mailer.keepalive is False
 
 
 def test_create_app_builds_smtp_mailer_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from playwright.sync_api import Page, Route, expect
+from playwright.sync_api import Page, expect
 
 from resumeapp.smtp_server import DevSMTPServer
 
@@ -64,23 +64,30 @@ def test_submit_button_shows_sending_state(page: Page) -> None:
     page.goto("/contact")
     fill_form(page)
 
-    # Answer the POST with "204 No Content": browsers then stay on the current
-    # document, which freezes the in-flight UI state so it can be asserted.
-    def swallow_post(route: Route) -> None:
-        if route.request.method == "POST":
-            route.fulfill(status=204)
-        else:
-            route.continue_()
-
-    page.route(re.compile(r"/contact$"), swallow_post)
-    page.get_by_role("button", name="Send message").click(no_wait_after=True)
+    # Cancel the browser's default submission from a second listener. Our own
+    # submit handler (registered first) still runs and flips the UI into its
+    # "sending" state, but no navigation starts, so the state is stable and can
+    # be asserted without depending on network timing or browser quirks.
+    page.evaluate("document.getElementById('contact-form').addEventListener('submit', e => e.preventDefault())")
+    page.get_by_role("button", name="Send message").click()
 
     button = page.locator("#contact-submit")
     expect(button).to_be_disabled()
     expect(button).to_contain_text("Sending...")
     expect(button).to_have_class(re.compile(r"\bis-loading\b"))
-    # Nothing else changed on the page.
+    # Still on the form with the values intact.
+    expect(page).to_have_url(re.compile(r"/contact$"))
     expect(page.locator("#name")).to_have_value("Jane Doe")
+
+
+def test_submit_button_is_not_disabled_when_browser_validation_fails(page: Page) -> None:
+    page.goto("/contact")
+    fill_form(page, email="")  # required field missing → checkValidity() is false
+    page.get_by_role("button", name="Send message").click()
+    button = page.locator("#contact-submit")
+    expect(button).to_be_enabled()
+    expect(button).to_contain_text("Send message")
+    expect(button).not_to_have_class(re.compile(r"\bis-loading\b"))
 
 
 def test_browser_validation_blocks_empty_submit(page: Page, smtp_server: DevSMTPServer) -> None:

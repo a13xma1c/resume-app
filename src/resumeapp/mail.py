@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import logging
 import smtplib
-from datetime import datetime, timezone
+import threading
+from datetime import UTC, datetime
 from email.message import EmailMessage
 from email.utils import formataddr, formatdate, make_msgid
 from typing import Protocol
@@ -33,8 +34,19 @@ class Mailer(Protocol):
         ...
 
 
+# Errors that mean "this message was rejected" rather than "the connection is bad".
+_PERMANENT_ERRORS = (smtplib.SMTPRecipientsRefused, smtplib.SMTPSenderRefused, smtplib.SMTPDataError)
+
+
 class SMTPMailer:
-    """Deliver messages through an SMTP server."""
+    """Deliver messages through an SMTP server.
+
+    The connection is kept open between sends (guarded by a lock, so the
+    mailer is safe to share between request threads). Opening a new TCP+TLS
+    session for every email is slow and, under load, exhausts ephemeral
+    ports. If a reused connection turns out to be stale (e.g. the server
+    closed it after an idle period) the send is retried once on a fresh one.
+    """
 
     def __init__(
         self,
@@ -46,6 +58,7 @@ class SMTPMailer:
         use_tls: bool = True,
         use_ssl: bool = False,
         timeout: float = 10,
+        keepalive: bool = True,
     ) -> None:
         if use_tls and use_ssl:
             raise ValueError("use_tls (STARTTLS) and use_ssl (implicit TLS) are mutually exclusive")
@@ -56,20 +69,74 @@ class SMTPMailer:
         self.use_tls = use_tls
         self.use_ssl = use_ssl
         self.timeout = timeout
+        self.keepalive = keepalive
+        self._connection: smtplib.SMTP | None = None
+        self._lock = threading.Lock()
+
+    @property
+    def connected(self) -> bool:
+        return self._connection is not None
+
+    def _open(self) -> smtplib.SMTP:
+        smtp_class = smtplib.SMTP_SSL if self.use_ssl else smtplib.SMTP
+        smtp = smtp_class(self.host, self.port, timeout=self.timeout)
+        try:
+            if self.use_tls:
+                smtp.starttls()
+            if self.username:
+                smtp.login(self.username, self.password or "")
+        except BaseException:
+            smtp.close()
+            raise
+        return smtp
+
+    def _discard(self, *, quit: bool = False) -> None:
+        """Drop the cached connection, optionally with a polite QUIT first."""
+        connection, self._connection = self._connection, None
+        if connection is None:
+            return
+        try:
+            if quit:
+                connection.quit()
+            else:
+                connection.close()
+        except (smtplib.SMTPException, OSError):
+            connection.close()
 
     def send(self, message: EmailMessage) -> None:
-        smtp_class = smtplib.SMTP_SSL if self.use_ssl else smtplib.SMTP
-        try:
-            with smtp_class(self.host, self.port, timeout=self.timeout) as smtp:
-                if self.use_tls:
-                    smtp.starttls()
-                if self.username:
-                    smtp.login(self.username, self.password or "")
-                smtp.send_message(message)
-        except (smtplib.SMTPException, OSError) as exc:
-            logger.error("SMTP delivery to %s failed: %s", self.host, exc)
-            raise MailDeliveryError(str(exc)) from exc
+        with self._lock:
+            try:
+                self._send_locked(message)
+            except (smtplib.SMTPException, OSError) as exc:
+                self._discard()
+                logger.error("SMTP delivery to %s failed: %s", self.host, exc)
+                raise MailDeliveryError(str(exc)) from exc
+            finally:
+                if not self.keepalive:
+                    self._discard(quit=True)
         logger.info("Contact email delivered to %s via %s", message["To"], self.host)
+
+    def _send_locked(self, message: EmailMessage) -> None:
+        reused = self._connection is not None
+        if self._connection is None:
+            self._connection = self._open()
+        try:
+            self._connection.send_message(message)
+        except _PERMANENT_ERRORS:
+            raise
+        except (smtplib.SMTPException, OSError) as exc:
+            if not reused:
+                raise
+            # The cached connection went stale; reconnect and try once more.
+            logger.warning("SMTP connection to %s was stale (%s); reconnecting", self.host, exc)
+            self._discard()
+            self._connection = self._open()
+            self._connection.send_message(message)
+
+    def close(self) -> None:
+        """Politely end the cached SMTP session (safe to call repeatedly)."""
+        with self._lock:
+            self._discard(quit=True)
 
 
 class ConsoleMailer:
@@ -103,7 +170,7 @@ def build_contact_email(
     The message is sent *from* the configured sender (so SPF/DKIM stay valid)
     with ``Reply-To`` pointing at the visitor, making replies one click away.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     subject = form.subject or f"New message from {form.name}"
     if subject_prefix:
         subject = f"{subject_prefix} {subject}"

@@ -8,17 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script>
-        // Apply the saved theme before first paint to avoid a flash of the wrong theme.
-        (function () {
-            try {
-                var t = localStorage.getItem("theme");
-                if (!t && window.matchMedia("(prefers-color-scheme: dark)").matches) t = "dark";
-                if (t) document.documentElement.setAttribute("data-theme", t);
-            } catch (e) { /* storage unavailable */ }
-        })();
-    </script>
+    <link rel="stylesheet" href="{{ static_url('css/style.css') }}">
+    <script>{{ bootstrap_script }}</script>
 </head>
 <body data-experience-url="{{ url_for('pages.experience') }}">
     <a class="skip-link" href="#main-content">Skip to content</a>
@@ -40,7 +31,8 @@
             </button>
 
             <div class="nav-links-wrap" id="nav-links">
-                <ul class="nav-links">
+                <ul class="nav-links" id="nav-link-list">
+                    <li class="nav-indicator" aria-hidden="true"></li>
                     {% for endpoint, label in nav_items %}
                     <li>
                         <a href="{{ url_for(endpoint) }}"
@@ -63,21 +55,25 @@
         </div>
     </nav>
 
-    <div class="site-wrapper" id="main-content">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            <div class="flash-stack">
-                {% for category, message in messages %}
-                <div class="flash flash-{{ category }}" role="status">
-                    <span class="flash-icon">{% if category == 'success' %}✓{% else %}!{% endif %}</span>
-                    <span>{{ message }}</span>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        {% endwith %}
+    <div class="site-wrapper">
+        <div class="page-stage" id="main-content" tabindex="-1">
+            <div class="page-panel" data-page-path="{{ request.path }}">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    <div class="flash-stack">
+                        {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}" role="status">
+                            <span class="flash-icon">{% if category == 'success' %}✓{% else %}!{% endif %}</span>
+                            <span>{{ message }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                {% endwith %}
 
-        {% block content %}{% endblock %}
+                {% block content %}{% endblock %}
+            </div>
+        </div>
 
         <footer class="cv-footer">
             <div class="footer-content">
@@ -95,8 +91,9 @@
     </div>
 
     <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+    <div id="route-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ static_url('js/main.js') }}" defer></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

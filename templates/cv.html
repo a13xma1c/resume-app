@@ -6,7 +6,7 @@
 {% block description %}Complete, print-ready CV of {{ cv.personal.name }}, {{ cv.personal.title }}.{% endblock %}
 
 {% block content %}
-<header class="cv-header">
+<header class="cv-header" data-reveal>
     <div class="header-container">
         <div class="header-main">
             <div class="avatar-badge">
@@ -28,7 +28,7 @@
                     {{ icons.download() }}
                     <span>Download PDF</span>
                 </a>
-                <button type="button" onclick="window.print()" class="btn btn-secondary" title="Print or Save as PDF">
+                <button type="button" data-action="print" class="btn btn-secondary" title="Print or Save as PDF">
                     {{ icons.printer() }}
                     <span>Print</span>
                 </button>
@@ -41,12 +41,12 @@
 
 <main class="cv-main-layout">
     <div class="cv-left-column">
-        <section class="cv-card section-profile">
+        <section class="cv-card section-profile" data-reveal>
             {{ section_header('👤', 'Professional Profile') }}
             <p class="profile-text">{{ cv.personal.summary }}</p>
         </section>
 
-        <section class="cv-card section-experience">
+        <section class="cv-card section-experience" data-reveal>
             <div class="section-header experience-header">
                 <div class="section-title-wrap">
                     <span class="section-icon" aria-hidden="true">💼</span>
@@ -61,27 +61,27 @@
     </div>
 
     <aside class="cv-right-column">
-        <section class="cv-card section-skills">
+        <section class="cv-card section-skills" data-reveal>
             {{ section_header('🛠️', 'Skills & Expertise') }}
             {% include 'partials/_skills.html' %}
         </section>
 
-        <section class="cv-card section-certifications">
+        <section class="cv-card section-certifications" data-reveal>
             {{ section_header('📜', 'Certifications') }}
             {% include 'partials/_certifications.html' %}
         </section>
 
-        <section class="cv-card section-education">
+        <section class="cv-card section-education" data-reveal>
             {{ section_header('🎓', 'Education') }}
             {% include 'partials/_education.html' %}
         </section>
 
-        <section class="cv-card section-languages">
+        <section class="cv-card section-languages" data-reveal>
             {{ section_header('🌐', 'Languages') }}
             {% include 'partials/_languages.html' %}
         </section>
 
-        <section class="cv-card section-courses">
+        <section class="cv-card section-courses" data-reveal>
             {{ section_header('📚', 'Relevant Courses') }}
             {% include 'partials/_courses.html' %}
         </section>

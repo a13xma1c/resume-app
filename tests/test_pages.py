@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
@@ -38,8 +40,8 @@ def test_every_page_has_full_navigation(client: FlaskClient, path: str) -> None:
 @pytest.mark.parametrize("path,label", PAGES.items())
 def test_active_nav_link_marks_current_page(client: FlaskClient, path: str, label: str) -> None:
     html = client.get(path).get_data(as_text=True)
-    active_snippet = f'href="{path}"\n                           class="nav-link active"'
-    assert active_snippet in html
+    active = re.search(r'<a href="([^"]+)"\s+class="nav-link active"', html)
+    assert active is not None and active.group(1) == path
     assert 'aria-current="page"' in html
     # Exactly one link is marked active.
     assert html.count("nav-link active") == 1
@@ -184,7 +186,8 @@ def test_full_cv_page_contains_every_section(client: FlaskClient) -> None:
     ):
         assert heading in html, f"missing section: {heading}"
     assert "Download PDF" in html
-    assert "window.print()" in html
+    assert 'data-action="print"' in html
+    assert "onclick=" not in html  # no inline handlers (CSP)
     assert 'id="exp-filter-input"' in html
     assert html.count('class="timeline-item"') == len(CV_DATA["experience"])
 
@@ -239,6 +242,9 @@ def test_security_headers_present_on_all_responses(client: FlaskClient, path: st
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert response.headers["X-Frame-Options"] == "DENY"
     assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert response.headers["Permissions-Policy"].startswith("camera=()")
+    assert response.headers["Cross-Origin-Opener-Policy"] == "same-origin"
+    assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
 
 
 @pytest.mark.parametrize(
@@ -255,3 +261,65 @@ def test_templates_escape_user_visible_values(app: Flask) -> None:
     """Jinja autoescaping must be on for .html templates."""
     autoescape = app.jinja_env.autoescape
     assert callable(autoescape) and autoescape("contact.html") is True
+
+
+# --- Carousel / animation scaffolding -----------------------------------------
+
+
+@pytest.mark.parametrize("path", list(PAGES))
+def test_pages_are_wrapped_in_a_single_carousel_panel(client: FlaskClient, path: str) -> None:
+    html = client.get(path).get_data(as_text=True)
+    assert html.count('class="page-stage" id="main-content"') == 1
+    assert html.count('class="page-panel"') == 1
+    assert f'data-page-path="{path}"' in html
+    # The footer lives outside the stage so it does not slide with the pages.
+    assert html.index('<footer class="cv-footer">') > html.index('class="page-panel"')
+    assert html.index("</footer>") > html.rindex("</div>\n        </div>\n\n        <footer")
+
+
+@pytest.mark.parametrize("path", list(PAGES))
+def test_pages_mark_elements_for_scroll_reveal(client: FlaskClient, path: str) -> None:
+    html = client.get(path).get_data(as_text=True)
+    assert html.count("data-reveal") >= 2
+
+
+def test_reveal_markers_on_repeated_items(client: FlaskClient) -> None:
+    html = client.get("/experience").get_data(as_text=True)
+    assert html.count('class="timeline-item" data-reveal') == len(CV_DATA["experience"])
+    html = client.get("/").get_data(as_text=True)
+    assert html.count('class="highlight-card" data-reveal') == len(CV_DATA["personal"]["highlights"])
+    assert html.count("explore-card") >= 4 and 'class="explore-card" data-reveal' in html
+
+
+def test_nav_has_sliding_indicator_and_head_marks_js(client: FlaskClient) -> None:
+    html = client.get("/").get_data(as_text=True)
+    assert '<li class="nav-indicator" aria-hidden="true"></li>' in html
+    assert "classList.add('js-anim')" in html
+    assert "anim-failsafe" in html
+
+
+def test_main_js_is_syntactically_valid() -> None:
+    """Run ``node --check`` on the bundle when Node.js is available."""
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    script = Path(__file__).resolve().parent.parent / "static" / "js" / "main.js"
+    subprocess.run([node, "--check", str(script)], check=True, capture_output=True)
+
+
+def test_css_and_js_agree_on_carousel_duration() -> None:
+    """The JS safety-net timer must be no shorter than the CSS transition."""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    css = (root / "static" / "css" / "style.css").read_text()
+    js = (root / "static" / "js" / "main.js").read_text()
+    css_match = re.search(r"--carousel-duration:\s*(\d+)ms", css)
+    js_match = re.search(r"const SLIDE_MS = (\d+)", js)
+    assert css_match is not None and js_match is not None
+    assert int(js_match.group(1)) == int(css_match.group(1))

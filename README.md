@@ -11,6 +11,8 @@ A modern, responsive, multi-page CV & Portfolio website built with **Python**, *
   - **Education** – degrees, certifications and relevant courses.
   - **Full CV** – the complete one-page, print-optimised CV with download/print buttons.
   - **Contact** – a form that emails messages to a predefined address (see [Contact form & email](#contact-form--email)).
+- **Carousel page transitions**: internal links are intercepted and the next page is fetched and *rolled* in horizontally — forward pages slide in from the right, earlier pages from the left — with a slight overshoot so it snaps into place. Browser back/forward roll too, a sliding pill in the nav follows the active page, nav links are prefetched on hover, touch devices can swipe between pages, and everything degrades to ordinary navigation (modifier-clicks, fetch errors, `prefers-reduced-motion`).
+- **Scroll & micro-animations**: cards, timeline entries and headers fade/rise in as they scroll into view (staggered, `IntersectionObserver`), plus hover lifts, a pulsing "current role" marker, floating avatar, shimmering header bar, spinning theme icon, growing title underline and animated flashes/menus. All honour `prefers-reduced-motion`; print output is unaffected; if the script fails to load a fail-safe reveals everything.
 - **Interactive UI**:
   - **Dark / Light Mode** with system-preference detection and `localStorage` persistence (no flash of wrong theme).
   - **Live Filter / Search** over work experience by keywords, technologies or company, with an empty-state message.
@@ -19,7 +21,10 @@ A modern, responsive, multi-page CV & Portfolio website built with **Python**, *
 - **PDF Download & View**: Direct download (`/download-pdf`) and inline viewing (`/view-pdf`) of the source CV PDF.
 - **REST API**: `/api/cv` JSON endpoint providing the full structured resume data.
 - **Print Optimisation**: Tailored `@media print` stylesheet for clean physical prints or browser PDF exports.
-- **Hardened by default**: CSRF tokens, honeypot spam trap, per-IP rate limiting, header-injection checks, request size limit, custom error pages and security headers.
+- **Hardened by default**: CSRF tokens, honeypot spam trap, per-IP rate limiting, header-injection checks, request size limit, custom error pages, and a strict hash-based Content-Security-Policy plus the usual security headers (HSTS when served over HTTPS).
+- **Cache-friendly**: ETags with `304 Not Modified` for pages and the API, content-hashed static asset URLs with a one-year `max-age`, `no-store` where it matters (contact form, health check).
+- **Deployment-ready**: `TRUSTED_PROXIES` for reverse proxies, `GET /healthz` for load balancers, GitHub Actions CI running lint, types, unit, browser and load tests.
+- **Persistent SMTP connection**: the mailer keeps its SMTP session open between sends (with automatic reconnect) instead of paying a TCP+TLS handshake per email.
 - **Bundled SMTP server** (`resumeapp-smtp`) that receives contact-form emails locally and saves them as `.eml` files — for development, end-to-end tests and load tests.
 - **Fully typed** (`mypy --strict` on the app *and* the tests) with unit, integration, Playwright browser and Locust load test suites.
 
@@ -63,6 +68,7 @@ Open [http://localhost:5123](http://localhost:5123) (or the port you chose) in y
 | `/contact` | GET | Contact form |
 | `/contact` | POST | Submit the contact form (sends an email) |
 | `/api/cv` | GET | Structured CV data in JSON format |
+| `/healthz` | GET | Health probe: `{"status", "version", "mailer", "pdf_available"}` |
 | `/download-pdf` | GET | Download the original CV PDF |
 | `/view-pdf` | GET | View the PDF inline in the browser |
 
@@ -88,7 +94,12 @@ Configuration is done through environment variables (see [`.env.example`](.env.e
 | `MAIL_DEFAULT_SENDER` | `MAIL_USERNAME` or `no-reply@localhost` | `From` address |
 | `MAIL_TIMEOUT` | `10` | SMTP connection timeout (seconds) |
 | `MAIL_SUPPRESS_SEND` | `false` | Force console logging even when `MAIL_SERVER` is set |
+| `MAIL_KEEPALIVE` | `true` | Reuse one SMTP session across sends (set `false` to connect per email) |
 | `CV_PDF_PATH` | `./Alex Maican - CV.pdf` | Location of the downloadable PDF |
+| `SESSION_COOKIE_SECURE` | `false` | Set `true` behind HTTPS (also enables HSTS by default) |
+| `HSTS_ENABLED` / `HSTS_MAX_AGE` | `= SESSION_COOKIE_SECURE` / `31536000` | `Strict-Transport-Security` header |
+| `TRUSTED_PROXIES` | `0` | Reverse proxies whose `X-Forwarded-*` headers to trust (for real client IPs) |
+| `STATIC_MAX_AGE` / `API_CACHE_MAX_AGE` | `31536000` / `300` | Browser cache lifetimes for versioned assets and `/api/cv` |
 | `PORT` / `FLASK_DEBUG` | `5123` / `1` | Dev-server options for `python app.py` / `uv run resumeapp` |
 
 Example (Gmail with an app password):
@@ -127,13 +138,13 @@ Programmatic use (this is what the test suites do):
 ```python
 from resumeapp.smtp_server import DevSMTPServer
 
-with DevSMTPServer(port=0) as smtp:                  # port 0 → pick a free one
-    app = create_app(smtp.mail_config())             # points MAIL_* at the server
+with DevSMTPServer(port=0) as smtp:  # port 0 → pick a free one
+    app = create_app(smtp.mail_config())  # points MAIL_* at the server
     ...
-    message = smtp.wait_for_messages(1)[0]           # StoredMessage: subject, body, rcpt_tos, path…
+    message = smtp.wait_for_messages(1)[0]  # StoredMessage: subject, body, rcpt_tos, path…
 ```
 
-> The rate limiter is in-memory and therefore per-process; if you deploy with several workers, each worker keeps its own counters. Behind a reverse proxy, wrap the app with Werkzeug's `ProxyFix` so `request.remote_addr` reflects the real client IP.
+> The rate limiter is in-memory and therefore per-process; if you deploy with several workers, each worker keeps its own counters. Behind a reverse proxy set `TRUSTED_PROXIES` to the number of proxies so `request.remote_addr` reflects the real client IP (otherwise every visitor would share the proxy's quota).
 
 ---
 
@@ -148,6 +159,7 @@ src/resumeapp/
   forms.py                  # ContactForm validation
   mail.py                   # email composition + SMTP / console transports
   security.py               # CSRF helpers and rate limiter
+  http.py                   # CSP & security headers, ETag/caching policy, static asset versioning, ProxyFix
   smtp_server.py            # bundled SMTP server (DevSMTPServer + `resumeapp-smtp` CLI)
   views/                    # blueprints: pages, contact, api
 templates/                  # Jinja templates (base layout, pages, partials/)
@@ -162,9 +174,10 @@ tests/                      # unit & integration tests (fully typed)
 
 ## Testing
 
-All test code is type-annotated and checked with `mypy --strict` alongside the application code:
+All test code is type-annotated and checked with `mypy --strict` alongside the application code, and linted/formatted with Ruff. The same steps run in CI (`.github/workflows/ci.yml`):
 
 ```bash
+uv run ruff check . && uv run ruff format --check .
 uv run mypy            # checks src/, tests/ and loadtests/
 ```
 
@@ -174,7 +187,7 @@ uv run mypy            # checks src/, tests/ and loadtests/
 uv run pytest
 ```
 
-~280 fast tests, no network or browser needed. They cover every page (content, navigation, titles, error pages, security headers), the JSON API and PDF endpoints, the contact form end-to-end (success path, every validation rule, CSRF, honeypot, rate limiting, delivery failures, XSS/header-injection attempts, payload limits), and unit tests for form validation, email building, the SMTP/console mailers, CSRF helpers, the rate limiter, configuration parsing, the app factory, the CLI entry points and the CV data. The SMTP server tests perform **real SMTP conversations** over loopback — `SMTPMailer` → `DevSMTPServer` — including AUTH success/failure and a full web-form → SMTP round trip.
+~355 fast tests, no network or browser needed. They cover every page (content, navigation, titles, error pages, security headers), the JSON API and PDF endpoints, the contact form end-to-end (success path, every validation rule, CSRF, honeypot, rate limiting, delivery failures, XSS/header-injection attempts, payload limits), and unit tests for form validation, email building, the SMTP/console mailers, CSRF helpers, the rate limiter, configuration parsing, the app factory, the CLI entry points and the CV data. The SMTP server tests perform **real SMTP conversations** over loopback — `SMTPMailer` → `DevSMTPServer` — including AUTH success/failure and a full web-form → SMTP round trip.
 
 ### Browser tests (Playwright)
 
@@ -183,15 +196,15 @@ uv run playwright install chromium   # once
 uv run pytest -m e2e                 # add --headed to watch, --browser firefox/webkit for others
 ```
 
-40 tests drive a real Chromium against a live Flask server **and** a live SMTP server: navigation and active links, theme toggle persistence (incl. `prefers-color-scheme`), the mobile menu, clipboard copy, PDF download, the experience filter (typing, tag clicks, keyboard, `?q=` deep links from other pages, empty state), and the contact form — HTML5 validation, server-side errors with focus management, the "Sending…" state, Unicode and 5 000-character messages, honeypot, flash lifecycle — asserting on the email that actually arrives at the SMTP server.
+76 tests drive a real Chromium against a live Flask server (served by Waitress) **and** a live SMTP server: navigation and active links, theme toggle persistence (incl. `prefers-color-scheme`), the mobile menu, clipboard copy, PDF download, the experience filter (typing, tag clicks, keyboard, `?q=` deep links from other pages, empty state), the contact form — HTML5 validation, server-side errors with focus management, the "Sending…" state, Unicode and 5 000-character messages, honeypot, flash lifecycle — asserting on the email that actually arrives at the SMTP server, and the motion layer: carousel direction and settling, history/back-forward, rapid clicks, prefetching, modifier-clicks, swipe, reduced-motion and fetch-failure fallbacks, scroll reveal and its stagger/fail-safe, and the micro-animations.
 
 ### Load tests (Locust)
 
 ```bash
-uv run pytest -m load                                   # from pytest (≈10 s run, asserts on results)
-LOAD_USERS=100 LOAD_DURATION=60 uv run pytest -m load   # heavier run
+uv run pytest -m load                                                        # ≈10 s smoke run
+LOAD_USERS=1000 LOAD_SPAWN_RATE=50 LOAD_DURATION=60 uv run pytest -m load    # heavy run
 ```
 
-The pytest wrapper starts the app and SMTP server, runs Locust headless as a subprocess, and asserts on the collected statistics: zero failed requests, p95 latency within budget for every endpoint, traffic on every page, and that each accepted contact submission produced an email while invalid/honeypot submissions produced none.
+The pytest wrapper starts the SMTP server in-process and the app on several worker processes sharing one socket (pre-fork, like gunicorn), runs Locust headless as a subprocess with `FastHttpUser`s (one keep-alive connection per user), and asserts on the collected statistics: zero failed requests, p95 latency within budget for every endpoint, traffic on every page, and that each accepted contact submission produced an email while invalid/honeypot submissions produced none. `LOAD_SERVER_PROCESSES`, `LOAD_PROCESSES`, `LOAD_MAX_P95_MS` and `LOAD_MAX_FAIL_RATIO` tune it for the machine at hand.
 
 For interactive or long-running load tests against any deployment, see [`loadtests/README.md`](loadtests/README.md) — thresholds are enforced via the process exit code so the run can gate CI.

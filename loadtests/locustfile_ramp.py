@@ -15,7 +15,7 @@ from locust import LoadTestShape
 # Locust puts the locustfile's directory on sys.path, so the sibling module is
 # importable by its bare name at runtime; the package form keeps type checkers happy.
 try:
-    from loadtests.locustfile import ContactSender, Visitor  # noqa: F401  (re-exported for Locust)
+    from loadtests.locustfile import ContactSender, Visitor
 except ModuleNotFoundError:  # pragma: no cover - running via `locust -f loadtests/locustfile_ramp.py`
     from locustfile import ContactSender, Visitor  # type: ignore[import-not-found,no-redef]  # noqa: F401
 

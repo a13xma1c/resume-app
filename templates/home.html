@@ -5,7 +5,7 @@
 {% block title %}{{ cv.personal.name }} - {{ cv.personal.title }}{% endblock %}
 
 {% block content %}
-<header class="cv-header hero">
+<header class="cv-header hero" data-reveal>
     <div class="header-container">
         <div class="header-main">
             <div class="avatar-badge avatar-lg">
@@ -42,31 +42,31 @@
 </header>
 
 <main class="page-main">
-    <section class="cv-card section-profile">
+    <section class="cv-card section-profile" data-reveal>
         {{ section_header('👤', 'Professional Profile') }}
         <p class="profile-text">{{ cv.personal.summary }}</p>
     </section>
 
     <section class="explore-grid" aria-label="Explore the site">
-        <a href="{{ url_for('pages.experience') }}" class="explore-card">
+        <a href="{{ url_for('pages.experience') }}" class="explore-card" data-reveal>
             <span class="explore-icon" aria-hidden="true">💼</span>
             <h3>Experience</h3>
             <p>{{ stats.roles }} roles across IBM, eMAG, Orange Services and more — with a live keyword filter.</p>
             <span class="explore-link">Browse experience {{ icons.arrow() }}</span>
         </a>
-        <a href="{{ url_for('pages.skills') }}" class="explore-card">
+        <a href="{{ url_for('pages.skills') }}" class="explore-card" data-reveal>
             <span class="explore-icon" aria-hidden="true">🛠️</span>
             <h3>Skills</h3>
             <p>{{ stats.skills }} technologies in {{ stats.skill_categories }} categories, plus {{ stats.languages }} spoken languages.</p>
             <span class="explore-link">See skills {{ icons.arrow() }}</span>
         </a>
-        <a href="{{ url_for('pages.education') }}" class="explore-card">
+        <a href="{{ url_for('pages.education') }}" class="explore-card" data-reveal>
             <span class="explore-icon" aria-hidden="true">🎓</span>
             <h3>Education &amp; Certifications</h3>
             <p>{{ stats.degrees }} degrees and {{ stats.certifications }} professional certifications.</p>
             <span class="explore-link">View credentials {{ icons.arrow() }}</span>
         </a>
-        <a href="{{ url_for('contact.contact') }}" class="explore-card explore-card-accent">
+        <a href="{{ url_for('contact.contact') }}" class="explore-card explore-card-accent" data-reveal>
             <span class="explore-icon" aria-hidden="true">✉️</span>
             <h3>Contact</h3>
             <p>Have a role or project in mind? Send a message straight to my inbox.</p>
@@ -75,7 +75,7 @@
     </section>
 
     {% if current_role %}
-    <section class="cv-card section-current-role">
+    <section class="cv-card section-current-role" data-reveal>
         {{ section_header('🚀', 'Current Role') }}
         <div class="exp-header-row">
             <div>

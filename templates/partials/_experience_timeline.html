@@ -1,6 +1,6 @@
 <div class="timeline" id="experience-timeline">
     {% for exp in cv.experience %}
-    <article class="timeline-item" data-tech="{{ exp.key_technologies | join(' ') | lower }}" data-company="{{ exp.company | lower }}" data-role="{{ exp.role | lower }}">
+    <article class="timeline-item" data-reveal data-tech="{{ exp.key_technologies | join(' ') | lower }}" data-company="{{ exp.company | lower }}" data-role="{{ exp.role | lower }}">
         <div class="timeline-marker">
             <div class="marker-dot {% if exp.is_current %}active-marker{% endif %}"></div>
             <div class="marker-line"></div>

@@ -39,6 +39,9 @@ class RateLimiter:
     deployment; swap for a shared store if running several workers.
     """
 
+    #: Sweep idle keys every this many recorded hits so the table cannot grow forever.
+    SWEEP_EVERY = 256
+
     def __init__(self, limit: int, window_seconds: float, clock: Callable[[], float] = time.monotonic) -> None:
         if limit < 0:
             raise ValueError("limit must be >= 0")
@@ -49,11 +52,24 @@ class RateLimiter:
         self._clock = clock
         self._hits: dict[str, deque[float]] = defaultdict(deque)
         self._lock = threading.Lock()
+        self._since_sweep = 0
+
+    def __len__(self) -> int:
+        """Number of keys currently tracked (for monitoring and tests)."""
+        with self._lock:
+            return len(self._hits)
 
     def _prune(self, hits: deque[float], now: float) -> None:
         cutoff = now - self.window
         while hits and hits[0] <= cutoff:
             hits.popleft()
+
+    def _sweep(self, now: float) -> None:
+        """Drop keys whose hits have all expired (called with the lock held)."""
+        cutoff = now - self.window
+        for key in [k for k, hits in self._hits.items() if not hits or hits[-1] <= cutoff]:
+            del self._hits[key]
+        self._since_sweep = 0
 
     def hit(self, key: str) -> bool:
         """Record a request for ``key``. Returns True if it is within the limit."""
@@ -61,6 +77,9 @@ class RateLimiter:
             return True
         now = self._clock()
         with self._lock:
+            self._since_sweep += 1
+            if self._since_sweep >= self.SWEEP_EVERY:
+                self._sweep(now)
             hits = self._hits[key]
             self._prune(hits, now)
             if len(hits) >= self.limit:
@@ -76,8 +95,11 @@ class RateLimiter:
         with self._lock:
             hits = self._hits.get(key)
             if not hits:
+                self._hits.pop(key, None)
                 return self.limit
             self._prune(hits, now)
+            if not hits:
+                del self._hits[key]
             return max(self.limit - len(hits), 0)
 
     def reset(self, key: str | None = None) -> None:

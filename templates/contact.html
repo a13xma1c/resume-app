@@ -10,13 +10,13 @@
 {%- endmacro %}
 
 {% block content %}
-<header class="page-header">
+<header class="page-header" data-reveal>
     <h1 class="page-title">Get in Touch</h1>
     <p class="page-subtitle">Recruiting, consulting, or just want to talk data engineering? Drop me a line and I'll reply as soon as I can.</p>
 </header>
 
 <main class="page-main contact-layout">
-    <aside class="cv-card contact-info">
+    <aside class="cv-card contact-info" data-reveal>
         {{ section_header('📇', 'Contact Details') }}
         <ul class="contact-list">
             <li>
@@ -51,7 +51,7 @@
         <p class="contact-note">Messages sent through this form go straight to my inbox. I usually respond within one or two business days.</p>
     </aside>
 
-    <section class="cv-card contact-form-card">
+    <section class="cv-card contact-form-card" data-reveal>
         {{ section_header('✉️', 'Send a Message') }}
 
         {% if form_error %}

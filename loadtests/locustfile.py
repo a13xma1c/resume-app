@@ -18,6 +18,10 @@ and reflected in the process exit code, so the suite can gate a CI pipeline::
     locust -f loadtests/locustfile.py --host http://127.0.0.1:5123 \\
         --headless -u 50 -r 10 -t 2m --csv loadtests/results/run
 
+    # heavy: spread the load generation over 4 worker processes
+    locust -f loadtests/locustfile.py --host http://127.0.0.1:5123 \\
+        --headless -u 1000 -r 100 -t 5m --processes 4
+
 Environment variables:
 
 ``LOAD_MAX_FAIL_RATIO``   max fraction of failed requests (default ``0.01``)
@@ -40,8 +44,10 @@ import re
 import string
 from typing import Any
 
-from locust import HttpUser, between, events, task
+from locust import between, events, task
+from locust.contrib.fasthttp import FastHttpUser
 from locust.env import Environment
+from locust.runners import WorkerRunner
 from locust.stats import StatsEntry
 
 CSRF_RE = re.compile(r'name="csrf_token"\s+value="([^"]+)"')
@@ -64,8 +70,15 @@ def random_text(length: int) -> str:
     return "".join(random.choice(alphabet) for _ in range(length)).strip() or "x" * length
 
 
-class Visitor(HttpUser):
-    """Reads pages, the API and assets – the dominant traffic pattern."""
+class Visitor(FastHttpUser):
+    """Reads pages, the API and assets – the dominant traffic pattern.
+
+    ``FastHttpUser`` (geventhttpclient) is used instead of the python-requests
+    based ``HttpUser``: it needs roughly 5× less CPU per request, which matters
+    when a single machine has to simulate ~1000 users, and it keeps one
+    persistent connection per user, so the load generator does not run out of
+    ephemeral ports.
+    """
 
     weight = 6
     wait_time = between(0.5, 2.0)
@@ -126,7 +139,7 @@ class Visitor(HttpUser):
         self.client.get("/download-pdf", name="GET /download-pdf")
 
 
-class ContactSender(HttpUser):
+class ContactSender(FastHttpUser):
     """Fills in the contact form – the only write path of the application."""
 
     weight = 2
@@ -138,7 +151,7 @@ class ContactSender(HttpUser):
 
     def refresh_token(self) -> None:
         response = self.client.get("/contact", name="GET /contact")
-        match = CSRF_RE.search(response.text)
+        match = CSRF_RE.search(response.text or "")
         self.csrf_token = match.group(1) if match else ""
 
     def _payload(self, **overrides: str) -> dict[str, str]:
@@ -156,11 +169,10 @@ class ContactSender(HttpUser):
 
     def _post(self, name: str, data: dict[str, str], expected_status: int) -> None:
         with self.client.post("/contact", data=data, name=name, catch_response=True, allow_redirects=False) as response:
-            if response.status_code == expected_status:
+            rate_limited_ok = response.status_code == 429 and env_flag("LOAD_ALLOW_RATE_LIMIT")
+            if response.status_code == expected_status or rate_limited_ok:
                 response.success()
-            elif response.status_code == 429 and env_flag("LOAD_ALLOW_RATE_LIMIT"):
-                response.success()
-            elif response.status_code == 400 and "session has expired" in response.text:
+            elif response.status_code == 400 and "session has expired" in (response.text or ""):
                 # CSRF token rotated (e.g. server restarted) – fetch a new one.
                 self.refresh_token()
                 response.failure("csrf token rejected; refreshed")
@@ -215,6 +227,10 @@ def check_thresholds(total: StatsEntry) -> list[str]:
 
 def enforce_thresholds(environment: Environment, **_kwargs: Any) -> None:
     """``quitting`` listener: print a summary and fail the run on violations."""
+    if isinstance(environment.runner, WorkerRunner):
+        # With ``--processes``/distributed runs this fires in every worker too, but
+        # workers reset their stats after each report; only the master has totals.
+        return
     total = environment.stats.total
     violations = check_thresholds(total)
     p95 = total.get_response_time_percentile(0.95) or 0

@@ -11,6 +11,7 @@ import logging
 import smtplib
 import socket
 from collections.abc import Iterator
+from datetime import UTC
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
@@ -194,10 +195,10 @@ def test_handler_creates_maildir(tmp_path: Path) -> None:
 
 
 def test_handler_avoids_filename_collisions(tmp_path: Path) -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     handler = MailboxHandler(tmp_path)
-    now = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    now = datetime(2025, 1, 1, tzinfo=UTC)
     first = handler._write(sample_message("a"), now)
     second = handler._write(sample_message("b"), now)
     assert first != second
@@ -205,22 +206,22 @@ def test_handler_avoids_filename_collisions(tmp_path: Path) -> None:
 
 
 def test_stored_message_body_without_text_part() -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     msg = EmailMessage()
     msg["Subject"] = "attachment only"
     msg.add_attachment(b"\x00\x01", maintype="application", subtype="octet-stream", filename="blob.bin")
-    stored = StoredMessage("a@b.co", ("c@d.co",), msg, datetime.now(timezone.utc), "127.0.0.1")
+    stored = StoredMessage("a@b.co", ("c@d.co",), msg, datetime.now(UTC), "127.0.0.1")
     assert stored.body == ""
     assert stored.subject == "attachment only"
 
 
 def test_stored_message_body_decodes_html_fallback() -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     msg = EmailMessage()
     msg.set_content("<p>Hi</p>", subtype="html")
-    stored = StoredMessage("a@b.co", ("c@d.co",), msg, datetime.now(timezone.utc), "127.0.0.1")
+    stored = StoredMessage("a@b.co", ("c@d.co",), msg, datetime.now(UTC), "127.0.0.1")
     assert stored.body.strip() == "<p>Hi</p>"
 
 

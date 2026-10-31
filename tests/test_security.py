@@ -175,3 +175,35 @@ def test_thread_safety_under_contention() -> None:
 
     assert len(successes) == 200
     assert sum(successes) == 50  # exactly the limit, never more
+
+
+def test_idle_keys_are_swept(clock: FakeClock) -> None:
+    limiter = RateLimiter(5, 10, clock=clock)
+    for i in range(300):
+        limiter.hit(f"client-{i}")
+    assert len(limiter) <= 300
+    clock.advance(11)  # everything expired
+    for _ in range(RateLimiter.SWEEP_EVERY):
+        limiter.hit("active")
+    # The sweep ran: only the active key (and at most a few stragglers) remain.
+    assert len(limiter) <= 2
+
+
+def test_remaining_drops_expired_keys(clock: FakeClock) -> None:
+    limiter = RateLimiter(2, 10, clock=clock)
+    limiter.hit("a")
+    assert len(limiter) == 1
+    clock.advance(11)
+    assert limiter.remaining("a") == 2
+    assert len(limiter) == 0
+    assert limiter.remaining("never-seen") == 2
+    assert len(limiter) == 0
+
+
+def test_sweep_keeps_live_entries(clock: FakeClock) -> None:
+    limiter = RateLimiter(3, 100, clock=clock)
+    limiter.hit("keep")
+    limiter.hit("keep")
+    for _ in range(RateLimiter.SWEEP_EVERY + 1):
+        limiter.hit("other")
+    assert limiter.remaining("keep") == 1

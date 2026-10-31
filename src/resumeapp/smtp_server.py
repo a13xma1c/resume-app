@@ -29,7 +29,7 @@ import time
 import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.message import EmailMessage
 from pathlib import Path
 from types import FrameType, TracebackType
@@ -94,13 +94,13 @@ class MailboxHandler:
             self._received.wait_for(lambda: len(self._messages) >= count, timeout=timeout)
             return list(self._messages)
 
-    async def handle_DATA(self, server: SMTP, session: Session, envelope: Envelope) -> str:  # noqa: N802
+    async def handle_DATA(self, server: SMTP, session: Session, envelope: Envelope) -> str:
         raw = envelope.content or b""
         if isinstance(raw, str):
             raw = raw.encode("utf-8", "surrogateescape")
         parsed = email.message_from_bytes(raw, policy=email.policy.default)
         assert isinstance(parsed, EmailMessage)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         peer = session.peer[0] if session.peer else "?"
 
         path = None

@@ -1,6 +1,6 @@
 <div class="skills-category-group">
     {% for category, items in cv.skills.items() %}
-    <div class="skill-category-block">
+    <div class="skill-category-block" data-reveal>
         <h4 class="category-title">{{ category }}</h4>
         <div class="skill-pills-wrap">
             {% for skill in items %}

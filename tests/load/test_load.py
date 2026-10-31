@@ -4,8 +4,14 @@ Locust is executed as a subprocess (its gevent monkey-patching must not touch
 the pytest process, which runs the Flask and SMTP servers on real threads).
 Results are read back from the CSV files Locust writes.
 
-Tunables (environment variables): ``LOAD_USERS`` (default 25),
-``LOAD_SPAWN_RATE`` (default 25), ``LOAD_DURATION`` seconds (default 10).
+Tunables (environment variables):
+
+``LOAD_USERS`` (default 25), ``LOAD_SPAWN_RATE`` (default 25), ``LOAD_DURATION``
+seconds (default 10), ``LOAD_SERVER_PROCESSES`` app worker processes (default:
+half the CPU cores, 1–4), ``LOAD_PROCESSES`` Locust worker processes (default 1 –
+raise it for 1000+ users so load generation is spread over several CPU cores),
+``LOAD_MAX_P95_MS`` latency budget (default 2000), ``LOAD_MAX_FAIL_RATIO``
+(default 0).
 """
 
 from __future__ import annotations
@@ -20,10 +26,9 @@ from pathlib import Path
 
 import pytest
 
-from resumeapp import create_app
 from resumeapp.smtp_server import DevSMTPServer
 
-from ..live_server import LiveServer
+from ..live_server import MultiProcessLiveServer, default_server_processes
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCUSTFILE = ROOT / "loadtests" / "locustfile.py"
@@ -31,10 +36,12 @@ LOCUSTFILE = ROOT / "loadtests" / "locustfile.py"
 USERS = int(os.environ.get("LOAD_USERS", "25"))
 SPAWN_RATE = int(os.environ.get("LOAD_SPAWN_RATE", "25"))
 DURATION = int(os.environ.get("LOAD_DURATION", "10"))
+PROCESSES = int(os.environ.get("LOAD_PROCESSES", "1"))
+SERVER_PROCESSES = int(os.environ.get("LOAD_SERVER_PROCESSES", "0")) or default_server_processes()
 
-# Generous CI-safe ceilings for a single-process dev server on shared hardware.
-MAX_FAIL_RATIO = 0.0
-MAX_P95_MS = 2000
+# Generous CI-safe ceilings for a single Python process on shared hardware.
+MAX_FAIL_RATIO = float(os.environ.get("LOAD_MAX_FAIL_RATIO", "0"))
+MAX_P95_MS = float(os.environ.get("LOAD_MAX_P95_MS", "2000"))
 MIN_TOTAL_REQUESTS = USERS * 2
 
 
@@ -87,26 +94,22 @@ def smtp_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[DevSMTPSer
 
 
 @pytest.fixture(scope="module")
-def live_server(smtp_server: DevSMTPServer) -> Iterator[LiveServer]:
-    app = create_app(
-        {
-            "SECRET_KEY": "load-secret",
-            "CONTACT_RECIPIENT": "owner@example.com",
-            "MAIL_DEFAULT_SENDER": "noreply@example.com",
-            "CONTACT_RATE_LIMIT": 0,
-            **smtp_server.mail_config(),
-        }
-    )
-    # Keep the request log quiet: thousands of lines would swamp the report.
-    import logging
-
-    logging.getLogger("werkzeug").setLevel(logging.ERROR)
-    with LiveServer(app) as server:
+def live_server(smtp_server: DevSMTPServer) -> Iterator[MultiProcessLiveServer]:
+    config = {
+        "SECRET_KEY": "load-secret",
+        "CONTACT_RECIPIENT": "owner@example.com",
+        "MAIL_DEFAULT_SENDER": "noreply@example.com",
+        "CONTACT_RATE_LIMIT": 0,
+        **smtp_server.mail_config(),
+    }
+    with MultiProcessLiveServer(config, processes=SERVER_PROCESSES) as server:
         yield server
 
 
 @pytest.fixture(scope="module")
-def load_run(live_server: LiveServer, smtp_server: DevSMTPServer, tmp_path_factory: pytest.TempPathFactory) -> LoadRun:
+def load_run(
+    live_server: MultiProcessLiveServer, smtp_server: DevSMTPServer, tmp_path_factory: pytest.TempPathFactory
+) -> LoadRun:
     """Execute one headless Locust run and collect its results (shared by all tests)."""
     out_dir = tmp_path_factory.mktemp("locust")
     prefix = out_dir / "run"
@@ -131,6 +134,8 @@ def load_run(live_server: LiveServer, smtp_server: DevSMTPServer, tmp_path_facto
         "--loglevel",
         "WARNING",
     ]
+    if PROCESSES > 1:
+        command += ["--processes", str(PROCESSES)]
     env = {
         **os.environ,
         "LOAD_MAX_FAIL_RATIO": str(MAX_FAIL_RATIO),
@@ -180,8 +185,13 @@ def test_generated_meaningful_volume(load_run: LoadRun) -> None:
 
 
 def test_no_failed_requests(load_run: LoadRun) -> None:
-    assert load_run.failures == [], f"unexpected failures: {load_run.failures[:5]}"
-    assert load_run.total.failures == 0
+    total = load_run.total
+    assert total.fail_ratio <= MAX_FAIL_RATIO, (
+        f"{total.failures}/{total.requests} requests failed ({total.fail_ratio:.2%}); "
+        f"first errors: {load_run.failures[:5]}"
+    )
+    if MAX_FAIL_RATIO == 0:
+        assert load_run.failures == []
 
 
 def test_latency_within_budget(load_run: LoadRun) -> None:

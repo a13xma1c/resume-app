@@ -26,6 +26,9 @@ dev = [
     "pytest-playwright>=0.7.0",
     "locust>=2.40.0",
     "mypy>=1.18.0",
+    "waitress>=3.0.2",
+    "types-waitress>=3.0.1",
+    "ruff>=0.8.0",
 ]
 
 [tool.pytest.ini_options]
@@ -39,6 +42,10 @@ markers = [
     "e2e: end-to-end browser tests driven by Playwright (start a live server)",
     "load: volumetric load tests driven by Locust (start a live server)",
 ]
+filterwarnings = [
+    # aiosmtpd still imports typing.ByteString (deprecated in 3.14+); not our code.
+    "ignore:.*ByteString.*:DeprecationWarning:aiosmtpd.*",
+]
 
 [tool.mypy]
 python_version = "3.12"
@@ -50,3 +57,31 @@ mypy_path = "src"
 [[tool.mypy.overrides]]
 module = ["aiosmtpd.*"]
 ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 120
+# Lowest syntax level we want to emit (keeps the code readable on any modern interpreter).
+target-version = "py312"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "SIM", # simplify
+    "PTH", # prefer pathlib
+    "RUF", # ruff-specific
+]
+ignore = [
+    "RUF012", # mutable class attributes – Locust user classes rely on them
+    "RUF002", # typographic dashes/arrows in docstrings are intentional
+    "RUF003", # …and in comments
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/resumeapp/cv_data.py" = ["E501"]  # prose content, keep sentences on one line
+"tests/**" = ["B011"]  # assert False is fine in tests

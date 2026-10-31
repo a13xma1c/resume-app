@@ -62,12 +62,28 @@ def load_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     mail_use_ssl = parse_bool(env.get("MAIL_USE_SSL"), default=False)
     mail_use_tls = parse_bool(env.get("MAIL_USE_TLS"), default=not mail_use_ssl)
 
+    secure_cookies = parse_bool(env.get("SESSION_COOKIE_SECURE"), default=False)
+
     return {
         "SECRET_KEY": secret_key,
         "SECRET_KEY_IS_EPHEMERAL": not env.get("SECRET_KEY"),
         "SESSION_COOKIE_HTTPONLY": True,
         "SESSION_COOKIE_SAMESITE": "Lax",
+        "SESSION_COOKIE_SECURE": secure_cookies,
+        "PREFERRED_URL_SCHEME": "https" if secure_cookies else "http",
         "MAX_CONTENT_LENGTH": 64 * 1024,  # contact form payloads are small
+        # --- Deployment ------------------------------------------------------
+        # Number of reverse proxies in front of the app whose X-Forwarded-* headers
+        # can be trusted (0 = none). Needed for correct client IPs / rate limiting.
+        "TRUSTED_PROXIES": parse_int(env.get("TRUSTED_PROXIES"), 0, minimum=0),
+        # Send Strict-Transport-Security (only meaningful when served over HTTPS).
+        "HSTS_ENABLED": parse_bool(env.get("HSTS_ENABLED"), default=secure_cookies),
+        "HSTS_MAX_AGE": parse_int(env.get("HSTS_MAX_AGE"), 31_536_000, minimum=0),
+        # --- HTTP caching ----------------------------------------------------
+        # Versioned static URLs let browsers cache assets for a long time safely.
+        "SEND_FILE_MAX_AGE_DEFAULT": parse_int(env.get("STATIC_MAX_AGE"), 31_536_000, minimum=0),
+        # How long clients may reuse /api/cv without revalidating.
+        "API_CACHE_MAX_AGE": parse_int(env.get("API_CACHE_MAX_AGE"), 300, minimum=0),
         # --- CV assets -------------------------------------------------------
         "CV_PDF_PATH": env.get("CV_PDF_PATH") or str(DEFAULT_PDF_PATH),
         # --- Contact form ----------------------------------------------------
@@ -86,4 +102,5 @@ def load_config(env: Mapping[str, str] | None = None) -> dict[str, Any]:
         "MAIL_TIMEOUT": parse_int(env.get("MAIL_TIMEOUT"), 10, minimum=1),
         "MAIL_DEFAULT_SENDER": env.get("MAIL_DEFAULT_SENDER") or mail_username or "no-reply@localhost",
         "MAIL_SUPPRESS_SEND": parse_bool(env.get("MAIL_SUPPRESS_SEND"), default=False),
+        "MAIL_KEEPALIVE": parse_bool(env.get("MAIL_KEEPALIVE"), default=True),
     }

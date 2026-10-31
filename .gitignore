@@ -10,3 +10,16 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Local configuration & test artefacts
+.env
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Dev SMTP outbox, load-test output, Playwright artefacts
+mail-outbox/
+loadtests/results/
+test-results/
+.mypy_cache/
+.ruff_cache/
