@@ -1,0 +1,8 @@
+<div class="languages-list">
+    {% for lang in cv.languages %}
+    <div class="language-item">
+        <span class="language-name">{{ lang.name }}</span>
+        <span class="language-level">{{ lang.level }}</span>
+    </div>
+    {% endfor %}
+</div>

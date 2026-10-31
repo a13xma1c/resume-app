@@ -1,0 +1,22 @@
+{% import 'partials/_icons.html' as icons %}
+<div class="contact-grid">
+    <a href="mailto:{{ cv.personal.email }}" class="contact-pill" title="Click to email, or use copy button">
+        {{ icons.mail() }}
+        <span>{{ cv.personal.email }}</span>
+        <button type="button" class="copy-btn" data-copy="{{ cv.personal.email }}" title="Copy Email" aria-label="Copy Email">{{ icons.copy() }}</button>
+    </a>
+    <a href="tel:{{ cv.personal.phone }}" class="contact-pill">
+        {{ icons.phone() }}
+        <span>{{ cv.personal.phone }}</span>
+        <button type="button" class="copy-btn" data-copy="{{ cv.personal.phone }}" title="Copy Phone Number" aria-label="Copy Phone Number">{{ icons.copy() }}</button>
+    </a>
+    <div class="contact-pill static-pill">
+        {{ icons.pin() }}
+        <span>{{ cv.personal.location }}</span>
+    </div>
+    <a href="{{ cv.personal.linkedin }}" target="_blank" rel="noopener noreferrer" class="contact-pill">
+        {{ icons.linkedin() }}
+        <span>{{ cv.personal.linkedin_display }}</span>
+        {{ icons.external() }}
+    </a>
+</div>

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from 'partials/_section_header.html' import section_header %}
+
+{% block title %}Education &amp; Certifications - {{ cv.personal.name }}{% endblock %}
+{% block description %}Education, certifications and courses of {{ cv.personal.name }}.{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <h1 class="page-title">Education &amp; Certifications</h1>
+    <p class="page-subtitle">Academic background, professional certifications and relevant coursework.</p>
+</header>
+
+<main class="page-main two-column-wide">
+    <div class="stacked">
+        <section class="cv-card section-education">
+            {{ section_header('🎓', 'Education') }}
+            {% include 'partials/_education.html' %}
+        </section>
+
+        <section class="cv-card section-courses">
+            {{ section_header('📚', 'Relevant Courses') }}
+            {% include 'partials/_courses.html' %}
+        </section>
+    </div>
+
+    <section class="cv-card section-certifications">
+        {{ section_header('📜', 'Certifications') }}
+        {% include 'partials/_certifications.html' %}
+    </section>
+</main>
+{% endblock %}

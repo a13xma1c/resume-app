@@ -1,0 +1,13 @@
+<div class="education-list">
+    {% for edu in cv.education %}
+    <div class="edu-item">
+        <h4 class="edu-degree">{{ edu.degree }}</h4>
+        <div class="edu-institution">{{ edu.institution }}</div>
+        <div class="edu-meta">
+            <span class="edu-location">{{ edu.location }}</span>
+            <span class="bullet-separator">•</span>
+            <span class="edu-period">{{ edu.period }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>

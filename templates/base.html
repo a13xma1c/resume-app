@@ -3,20 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ cv.personal.name }} - {{ cv.personal.title }}</title>
-    <meta name="description" content="Curriculum Vitae of {{ cv.personal.name }} - {{ cv.personal.title }}">
+    <title>{% block title %}{{ cv.personal.name }} - {{ cv.personal.title }}{% endblock %}</title>
+    <meta name="description" content="{% block description %}Curriculum Vitae of {{ cv.personal.name }} - {{ cv.personal.title }}{% endblock %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        // Apply the saved theme before first paint to avoid a flash of the wrong theme.
+        (function () {
+            try {
+                var t = localStorage.getItem("theme");
+                if (!t && window.matchMedia("(prefers-color-scheme: dark)").matches) t = "dark";
+                if (t) document.documentElement.setAttribute("data-theme", t);
+            } catch (e) { /* storage unavailable */ }
+        })();
+    </script>
 </head>
-<body>
-    <div class="site-wrapper">
+<body data-experience-url="{{ url_for('pages.experience') }}">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <nav class="site-nav" aria-label="Main navigation">
+        <div class="nav-inner">
+            <a href="{{ url_for('pages.home') }}" class="nav-brand" aria-label="{{ cv.personal.name }} - Home">
+                <span class="nav-avatar">AM</span>
+                <span class="nav-brand-text">
+                    <span class="nav-brand-name">{{ cv.personal.name }}</span>
+                    <span class="nav-brand-title">{{ cv.personal.title }}</span>
+                </span>
+            </a>
+
+            <button type="button" class="nav-toggle" id="nav-toggle" aria-controls="nav-links" aria-expanded="false" aria-label="Toggle navigation menu">
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+            </button>
+
+            <div class="nav-links-wrap" id="nav-links">
+                <ul class="nav-links">
+                    {% for endpoint, label in nav_items %}
+                    <li>
+                        <a href="{{ url_for(endpoint) }}"
+                           class="nav-link {% if request.endpoint == endpoint %}active{% endif %}"
+                           {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <div class="nav-actions">
+                    <a href="{{ url_for('api.download_pdf') }}" class="btn btn-primary btn-sm" title="Download CV as PDF">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span>PDF</span>
+                    </a>
+                    <button type="button" id="theme-toggle" class="btn btn-icon-only" aria-label="Toggle Dark/Light Mode" title="Toggle theme">
+                        <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="site-wrapper" id="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-stack">
+                {% for category, message in messages %}
+                <div class="flash flash-{{ category }}" role="status">
+                    <span class="flash-icon">{% if category == 'success' %}✓{% else %}!{% endif %}</span>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
+
+        <footer class="cv-footer">
+            <div class="footer-content">
+                <p>&copy; {{ current_year }} {{ cv.personal.name }} — {{ cv.personal.title }} • Built with Python &amp; Flask</p>
+                <div class="footer-links">
+                    {% for endpoint, label in nav_items %}
+                    <a href="{{ url_for(endpoint) }}">{{ label }}</a>
+                    {% if not loop.last %}<span class="bullet-separator">•</span>{% endif %}
+                    {% endfor %}
+                    <span class="bullet-separator">•</span>
+                    <a href="{{ url_for('api.cv') }}" target="_blank" rel="noopener">JSON API</a>
+                </div>
+            </div>
+        </footer>
     </div>
 
     <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
 </body>
 </html>

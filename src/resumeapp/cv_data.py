@@ -5,8 +5,8 @@ CV_DATA = {
         "name": "Alex Maican",
         "title": "Big Data Engineer",
         "location": "Bucharest, Romania",
-        "email": "alexmcn07@gmail.com",
-        "phone": "+40741696017",
+        "email": "test@test.com",
+        "phone": "+0000000000",
         "linkedin": "https://www.linkedin.com/in/alex-maican-7b6172b8",
         "linkedin_display": "linkedin.com/in/alex-maican-7b6172b8",
         "summary": (

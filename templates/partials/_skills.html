@@ -1,0 +1,12 @@
+<div class="skills-category-group">
+    {% for category, items in cv.skills.items() %}
+    <div class="skill-category-block">
+        <h4 class="category-title">{{ category }}</h4>
+        <div class="skill-pills-wrap">
+            {% for skill in items %}
+            <span class="skill-pill" data-skill="{{ skill | lower }}" role="button" tabindex="0" title="Show roles using {{ skill }}">{{ skill }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>

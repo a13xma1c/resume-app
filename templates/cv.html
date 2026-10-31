@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% import 'partials/_icons.html' as icons %}
+{% from 'partials/_section_header.html' import section_header %}
+
+{% block title %}Full CV - {{ cv.personal.name }}{% endblock %}
+{% block description %}Complete, print-ready CV of {{ cv.personal.name }}, {{ cv.personal.title }}.{% endblock %}
+
+{% block content %}
+<header class="cv-header">
+    <div class="header-container">
+        <div class="header-main">
+            <div class="avatar-badge">
+                <span class="avatar-initials">AM</span>
+            </div>
+            <div class="header-titles">
+                <h1 class="candidate-name">{{ cv.personal.name }}</h1>
+                <div class="candidate-role-badge">
+                    <span class="role-icon">⚡</span>
+                    <span class="candidate-title">{{ cv.personal.title }}</span>
+                </div>
+                {% include 'partials/_contact_pills.html' %}
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="action-buttons-group">
+                <a href="{{ url_for('api.download_pdf') }}" class="btn btn-primary" title="Download CV as PDF">
+                    {{ icons.download() }}
+                    <span>Download PDF</span>
+                </a>
+                <button type="button" onclick="window.print()" class="btn btn-secondary" title="Print or Save as PDF">
+                    {{ icons.printer() }}
+                    <span>Print</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {% include 'partials/_highlights.html' %}
+</header>
+
+<main class="cv-main-layout">
+    <div class="cv-left-column">
+        <section class="cv-card section-profile">
+            {{ section_header('👤', 'Professional Profile') }}
+            <p class="profile-text">{{ cv.personal.summary }}</p>
+        </section>
+
+        <section class="cv-card section-experience">
+            <div class="section-header experience-header">
+                <div class="section-title-wrap">
+                    <span class="section-icon" aria-hidden="true">💼</span>
+                    <h2>Work Experience</h2>
+                </div>
+                <div class="exp-search-box">
+                    <input type="search" id="exp-filter-input" placeholder="Filter experience by keyword (e.g. Spark, Airflow, GCP)..." aria-label="Filter experience items">
+                </div>
+            </div>
+            {% include 'partials/_experience_timeline.html' %}
+        </section>
+    </div>
+
+    <aside class="cv-right-column">
+        <section class="cv-card section-skills">
+            {{ section_header('🛠️', 'Skills & Expertise') }}
+            {% include 'partials/_skills.html' %}
+        </section>
+
+        <section class="cv-card section-certifications">
+            {{ section_header('📜', 'Certifications') }}
+            {% include 'partials/_certifications.html' %}
+        </section>
+
+        <section class="cv-card section-education">
+            {{ section_header('🎓', 'Education') }}
+            {% include 'partials/_education.html' %}
+        </section>
+
+        <section class="cv-card section-languages">
+            {{ section_header('🌐', 'Languages') }}
+            {% include 'partials/_languages.html' %}
+        </section>
+
+        <section class="cv-card section-courses">
+            {{ section_header('📚', 'Relevant Courses') }}
+            {% include 'partials/_courses.html' %}
+        </section>
+    </aside>
+</main>
+{% endblock %}

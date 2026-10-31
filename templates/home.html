@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% import 'partials/_icons.html' as icons %}
+{% from 'partials/_section_header.html' import section_header %}
+
+{% block title %}{{ cv.personal.name }} - {{ cv.personal.title }}{% endblock %}
+
+{% block content %}
+<header class="cv-header hero">
+    <div class="header-container">
+        <div class="header-main">
+            <div class="avatar-badge avatar-lg">
+                <span class="avatar-initials">AM</span>
+            </div>
+            <div class="header-titles">
+                <p class="hero-eyebrow">Hello, I'm</p>
+                <h1 class="candidate-name">{{ cv.personal.name }}</h1>
+                <div class="candidate-role-badge">
+                    <span class="role-icon">⚡</span>
+                    <span class="candidate-title">{{ cv.personal.title }}</span>
+                </div>
+                <p class="hero-tagline">
+                    {{ cv.personal.title }} based in {{ cv.personal.location }}{% if current_role %}, currently at <strong>{{ current_role.company }}</strong>{% endif %}.
+                    Building scalable data platforms and batch &amp; real-time pipelines.
+                </p>
+                {% include 'partials/_contact_pills.html' %}
+            </div>
+        </div>
+
+        <div class="header-actions hero-actions">
+            <a href="{{ url_for('contact.contact') }}" class="btn btn-primary">
+                {{ icons.send() }}
+                <span>Get in touch</span>
+            </a>
+            <a href="{{ url_for('pages.full_cv') }}" class="btn btn-secondary">
+                <span>View full CV</span>
+                {{ icons.arrow() }}
+            </a>
+        </div>
+    </div>
+
+    {% include 'partials/_highlights.html' %}
+</header>
+
+<main class="page-main">
+    <section class="cv-card section-profile">
+        {{ section_header('👤', 'Professional Profile') }}
+        <p class="profile-text">{{ cv.personal.summary }}</p>
+    </section>
+
+    <section class="explore-grid" aria-label="Explore the site">
+        <a href="{{ url_for('pages.experience') }}" class="explore-card">
+            <span class="explore-icon" aria-hidden="true">💼</span>
+            <h3>Experience</h3>
+            <p>{{ stats.roles }} roles across IBM, eMAG, Orange Services and more — with a live keyword filter.</p>
+            <span class="explore-link">Browse experience {{ icons.arrow() }}</span>
+        </a>
+        <a href="{{ url_for('pages.skills') }}" class="explore-card">
+            <span class="explore-icon" aria-hidden="true">🛠️</span>
+            <h3>Skills</h3>
+            <p>{{ stats.skills }} technologies in {{ stats.skill_categories }} categories, plus {{ stats.languages }} spoken languages.</p>
+            <span class="explore-link">See skills {{ icons.arrow() }}</span>
+        </a>
+        <a href="{{ url_for('pages.education') }}" class="explore-card">
+            <span class="explore-icon" aria-hidden="true">🎓</span>
+            <h3>Education &amp; Certifications</h3>
+            <p>{{ stats.degrees }} degrees and {{ stats.certifications }} professional certifications.</p>
+            <span class="explore-link">View credentials {{ icons.arrow() }}</span>
+        </a>
+        <a href="{{ url_for('contact.contact') }}" class="explore-card explore-card-accent">
+            <span class="explore-icon" aria-hidden="true">✉️</span>
+            <h3>Contact</h3>
+            <p>Have a role or project in mind? Send a message straight to my inbox.</p>
+            <span class="explore-link">Contact me {{ icons.arrow() }}</span>
+        </a>
+    </section>
+
+    {% if current_role %}
+    <section class="cv-card section-current-role">
+        {{ section_header('🚀', 'Current Role') }}
+        <div class="exp-header-row">
+            <div>
+                <h3 class="exp-role">{{ current_role.role }}</h3>
+                <div class="exp-company-location">
+                    <span class="exp-company">{{ current_role.company }}</span>
+                    <span class="bullet-separator">•</span>
+                    <span class="exp-location">{{ current_role.location }}</span>
+                </div>
+            </div>
+            <span class="exp-period-badge current-badge">{{ current_role.period }}</span>
+        </div>
+        <ul class="exp-responsibilities">
+            {% for resp in current_role.responsibilities[:3] %}
+            <li>{{ resp }}</li>
+            {% endfor %}
+        </ul>
+        <div class="exp-tech-tags">
+            {% for tech in current_role.key_technologies %}
+            <span class="tech-tag" data-tag="{{ tech | lower }}" role="button" tabindex="0">{{ tech }}</span>
+            {% endfor %}
+        </div>
+        <a href="{{ url_for('pages.experience') }}" class="inline-link">Read the full work history {{ icons.arrow() }}</a>
+    </section>
+    {% endif %}
+</main>
+{% endblock %}
