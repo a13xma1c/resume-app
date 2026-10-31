@@ -1,0 +1,17 @@
+<div class="certifications-list">
+    {% for cert in cv.certifications %}
+    <div class="cert-item" data-reveal>
+        <div class="cert-icon-col">
+            <span class="cert-badge-icon">🎖️</span>
+        </div>
+        <div class="cert-details">
+            <h4 class="cert-title">{{ cert.title }}</h4>
+            <div class="cert-meta">
+                <span class="cert-issuer">{{ cert.issuer }}</span>
+                <span class="bullet-separator">•</span>
+                <span class="cert-date">{{ cert.date }}</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>

@@ -1,12 +1,75 @@
 """Structured CV data for Alex Maican."""
 
-CV_DATA = {
+from __future__ import annotations
+
+from typing import NotRequired, TypedDict
+
+
+class Highlight(TypedDict):
+    label: str
+    value: str
+    desc: str
+
+
+class Personal(TypedDict):
+    name: str
+    title: str
+    location: str
+    email: str
+    phone: str
+    linkedin: str
+    linkedin_display: str
+    summary: str
+    highlights: list[Highlight]
+
+
+class Language(TypedDict):
+    name: str
+    level: str
+
+
+class Experience(TypedDict):
+    role: str
+    company: str
+    location: str
+    period: str
+    is_current: bool
+    badge: NotRequired[str]
+    key_technologies: list[str]
+    responsibilities: list[str]
+
+
+class Education(TypedDict):
+    degree: str
+    institution: str
+    location: str
+    period: str
+
+
+class Certification(TypedDict):
+    title: str
+    issuer: str
+    date: str
+    badge: str
+
+
+class CVData(TypedDict):
+    personal: Personal
+    skills: dict[str, list[str]]
+    languages: list[Language]
+    experience: list[Experience]
+    education: list[Education]
+    certifications: list[Certification]
+    courses: list[str]
+
+
+CV_DATA: CVData = {
     "personal": {
         "name": "Alex Maican",
         "title": "Big Data Engineer",
         "location": "Bucharest, Romania",
-        "email": "alexmcn07@gmail.com",
-        "phone": "+40741696017",
+        "email": "test@test.com",
+        "phone": "+0000000000",
         "linkedin": "https://www.linkedin.com/in/alex-maican-7b6172b8",
         "linkedin_display": "linkedin.com/in/alex-maican-7b6172b8",
         "summary": (
@@ -25,7 +88,7 @@ CV_DATA = {
             {"label": "Scale", "value": "1B+ Rows/Day", "desc": "Stream & Batch Processing"},
             {"label": "Cloud & Lakehouse", "value": "GCP • AWS • Snowflake", "desc": "Modern Data Architecture"},
             {"label": "Orchestration & DevOps", "value": "Airflow • K8s • Terraform", "desc": "End-to-End Automation"},
-        ]
+        ],
     },
     "skills": {
         "Data Engineering & Distributed Systems": [
@@ -102,7 +165,7 @@ CV_DATA = {
                 "Databricks",
                 "Terraform",
                 "Python",
-                "Git"
+                "Git",
             ],
             "responsibilities": [
                 "Design, build, and maintain scalable big data pipelines and platforms capable of processing high volumes of structured and unstructured data across distributed environments.",
@@ -117,8 +180,8 @@ CV_DATA = {
                 "Built and maintained Snowflake data pipelines using SQL and Python, implementing staged ingestion, incremental loading, data transformations, and warehouse optimization through workload-aware sizing and automated suspension of idle compute.",
                 "Used AI-assisted development tools, such as JetBrains Assistant and Cursor, to accelerate implementation and refactoring, validating generated code through code reviews, automated tests, linting, and edge-case analysis.",
                 "Worked with Terraform-managed infrastructure and infrastructure-as-code workflows to support data platform resources and controlled infrastructure changes, including defining Snowflake resources.",
-                "Contributed to the migration of data processing pipelines to Databricks, adapting existing workloads to the Databricks environment and supporting scalable data transformations, processing reliability, and performance optimization."
-            ]
+                "Contributed to the migration of data processing pipelines to Databricks, adapting existing workloads to the Databricks environment and supporting scalable data transformations, processing reliability, and performance optimization.",
+            ],
         },
         {
             "role": "Senior Data Engineer",
@@ -140,7 +203,7 @@ CV_DATA = {
                 "Prometheus",
                 "Grafana",
                 "dbt",
-                "Tableau"
+                "Tableau",
             ],
             "responsibilities": [
                 "Design, develop, and maintain scalable ETL/ELT pipelines using SQL, Python, PySpark, and Apache Spark for large-scale data processing and transformation.",
@@ -154,8 +217,8 @@ CV_DATA = {
                 "Support analytics and machine learning workloads by preparing curated datasets and enabling integrations with tools such as dbt and Tableau.",
                 "Ensure data quality, governance, security, lineage, and compliance through automated testing, metadata management, IAM controls, and enterprise data governance standards.",
                 "Collaborate with data analysts, data scientists, software engineers, and business stakeholders in Agile/Scrum environments to deliver scalable and reliable data platforms.",
-                "Provide technical leadership, code reviews, architecture guidance, troubleshooting, and performance tuning across enterprise-scale cloud data ecosystems."
-            ]
+                "Provide technical leadership, code reviews, architecture guidance, troubleshooting, and performance tuning across enterprise-scale cloud data ecosystems.",
+            ],
         },
         {
             "role": "Big Data Developer",
@@ -176,7 +239,7 @@ CV_DATA = {
                 "Ansible",
                 "Jenkins",
                 "Rundeck",
-                "Python"
+                "Python",
             ],
             "responsibilities": [
                 "Developed and maintained Big Data solutions for an IoT management platform within an Agile environment.",
@@ -194,8 +257,8 @@ CV_DATA = {
                 "Automated deployment and infrastructure management tasks using Ansible.",
                 "Supported CI/CD processes and operational workflows using Jenkins and Rundeck.",
                 "Contributed to data warehousing, reporting, and analytical workloads by querying and federating data across multiple storage systems using Trino.",
-                "Collaborated cross-functionally with engineering and analytics teams to deliver scalable and reliable data processing solutions."
-            ]
+                "Collaborated cross-functionally with engineering and analytics teams to deliver scalable and reliable data processing solutions.",
+            ],
         },
         {
             "role": "Technician",
@@ -203,69 +266,64 @@ CV_DATA = {
             "location": "Bucharest",
             "period": "May 2018 - Jun 2019",
             "is_current": False,
-            "key_technologies": [
-                "Access Control",
-                "Security Systems",
-                "SOAP Protocol",
-                "Hardware / Network Setup"
-            ],
+            "key_technologies": ["Access Control", "Security Systems", "SOAP Protocol", "Hardware / Network Setup"],
             "responsibilities": [
                 "Set up Access Control Systems and tested security camera systems.",
                 "Researched ways to interface with the camera systems via SOAP protocol to enhance system functionality.",
-                "Conducted off-site camera installations for local businesses to expand company's service offerings."
-            ]
-        }
+                "Conducted off-site camera installations for local businesses to expand company's service offerings.",
+            ],
+        },
     ],
     "education": [
         {
             "degree": "Bachelor of Engineering - BE, Computer Science And Engineering",
             "institution": "Facultatea de Automatică și Calculatoare, UPB",
             "location": "Bucharest, Romania",
-            "period": "Jan 2018 - Jul 2022"
+            "period": "Jan 2018 - Jul 2022",
         },
         {
             "degree": "BS, Computer Science",
             "institution": "New York University - Polytechnic School of Engineering",
             "location": "New York, USA",
-            "period": "Jan 2015 - Dec 2016"
+            "period": "Jan 2015 - Dec 2016",
         },
         {
             "degree": "Mathematics and Computer Science",
             "institution": "ICHB",
             "location": "Bucharest, Romania",
-            "period": "Jan 2011 - Dec 2015"
-        }
+            "period": "Jan 2011 - Dec 2015",
+        },
     ],
     "certifications": [
         {
             "title": "Databricks Certified Data Engineer Associate",
             "issuer": "Databricks",
             "date": "Oct 2026",
-            "badge": "Associate"
+            "badge": "Associate",
         },
         {
             "title": "Astronomer Certification DAG Authoring for Apache Airflow",
             "issuer": "Astronomer",
             "date": "Dec 2024",
-            "badge": "DAG Authoring"
+            "badge": "DAG Authoring",
         },
         {
             "title": "Astronomer Certification for Apache Airflow Fundamentals",
             "issuer": "Astronomer",
             "date": "Jun 2024",
-            "badge": "Fundamentals"
+            "badge": "Fundamentals",
         },
         {
             "title": "Certified SAFe® 5 Practitioner",
             "issuer": "Scaled Agile, Inc.",
             "date": "May 2023",
-            "badge": "SAFe 5"
-        }
+            "badge": "SAFe 5",
+        },
     ],
     "courses": [
         "Foundations in Management",
         "General Engineering",
         "Introduction to Programming",
-        "Object Oriented Programming"
-    ]
+        "Object Oriented Programming",
+    ],
 }

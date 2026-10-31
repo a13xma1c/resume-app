@@ -1,0 +1,9 @@
+<div class="highlights-grid">
+    {% for item in cv.personal.highlights %}
+    <div class="highlight-card" data-reveal>
+        <span class="highlight-val">{{ item.value }}</span>
+        <span class="highlight-label">{{ item.label }}</span>
+        <span class="highlight-desc">{{ item.desc }}</span>
+    </div>
+    {% endfor %}
+</div>

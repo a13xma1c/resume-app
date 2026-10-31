@@ -1,0 +1,40 @@
+<div class="timeline" id="experience-timeline">
+    {% for exp in cv.experience %}
+    <article class="timeline-item" data-reveal data-tech="{{ exp.key_technologies | join(' ') | lower }}" data-company="{{ exp.company | lower }}" data-role="{{ exp.role | lower }}">
+        <div class="timeline-marker">
+            <div class="marker-dot {% if exp.is_current %}active-marker{% endif %}"></div>
+            <div class="marker-line"></div>
+        </div>
+        <div class="timeline-content">
+            <div class="exp-header-row">
+                <div>
+                    <h3 class="exp-role">{{ exp.role }}</h3>
+                    <div class="exp-company-location">
+                        <span class="exp-company">{{ exp.company }}</span>
+                        <span class="bullet-separator">•</span>
+                        <span class="exp-location">{{ exp.location }}</span>
+                    </div>
+                </div>
+                <div class="exp-meta">
+                    <span class="exp-period-badge {% if exp.is_current %}current-badge{% endif %}">{{ exp.period }}</span>
+                </div>
+            </div>
+
+            <ul class="exp-responsibilities">
+                {% for resp in exp.responsibilities %}
+                <li>{{ resp }}</li>
+                {% endfor %}
+            </ul>
+
+            {% if exp.key_technologies %}
+            <div class="exp-tech-tags">
+                {% for tech in exp.key_technologies %}
+                <span class="tech-tag" data-tag="{{ tech | lower }}" role="button" tabindex="0">{{ tech }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </article>
+    {% endfor %}
+</div>
+<p class="empty-state" id="experience-empty" hidden>No roles match that filter. Try another keyword or clear the search.</p>

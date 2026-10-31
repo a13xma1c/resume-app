@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from 'partials/_section_header.html' import section_header %}
+
+{% block title %}Experience - {{ cv.personal.name }}{% endblock %}
+{% block description %}Work experience of {{ cv.personal.name }}: IBM, eMAG, Orange Services and alfrednet.{% endblock %}
+
+{% block content %}
+<header class="page-header" data-reveal>
+    <h1 class="page-title">Work Experience</h1>
+    <p class="page-subtitle">{{ cv.experience | length }} roles and 7+ years of building data platforms. Filter by technology, company or keyword — or click any tag.</p>
+</header>
+
+<main class="page-main">
+    <section class="cv-card section-experience" data-reveal>
+        <div class="section-header experience-header">
+            <div class="section-title-wrap">
+                <span class="section-icon" aria-hidden="true">💼</span>
+                <h2>Timeline</h2>
+            </div>
+            <div class="exp-search-box">
+                <input type="search" id="exp-filter-input" placeholder="Filter experience by keyword (e.g. Spark, Airflow, GCP)..." aria-label="Filter experience items" autocomplete="off">
+            </div>
+        </div>
+
+        <div class="quick-filters" aria-label="Quick technology filters">
+            <span class="quick-filters-label">Quick picks:</span>
+            {% for tech in technologies[:14] %}
+            <span class="tech-tag" data-tag="{{ tech | lower }}" role="button" tabindex="0">{{ tech }}</span>
+            {% endfor %}
+        </div>
+
+        {% include 'partials/_experience_timeline.html' %}
+    </section>
+</main>
+{% endblock %}

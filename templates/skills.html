@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from 'partials/_section_header.html' import section_header %}
+
+{% block title %}Skills - {{ cv.personal.name }}{% endblock %}
+{% block description %}Technical skills and languages of {{ cv.personal.name }}, {{ cv.personal.title }}.{% endblock %}
+
+{% block content %}
+<header class="page-header" data-reveal>
+    <h1 class="page-title">Skills &amp; Expertise</h1>
+    <p class="page-subtitle">Technologies I work with every day. Click a skill to see the roles where I used it.</p>
+</header>
+
+<main class="page-main two-column-wide">
+    <section class="cv-card section-skills" data-reveal>
+        {{ section_header('🛠️', 'Technical Skills') }}
+        {% include 'partials/_skills.html' %}
+    </section>
+
+    <div class="stacked">
+        <section class="cv-card section-languages" data-reveal>
+            {{ section_header('🌐', 'Languages') }}
+            {% include 'partials/_languages.html' %}
+        </section>
+
+        <section class="cv-card section-highlights-side" data-reveal>
+            {{ section_header('📊', 'At a Glance') }}
+            {% include 'partials/_highlights.html' %}
+        </section>
+    </div>
+</main>
+{% endblock %}

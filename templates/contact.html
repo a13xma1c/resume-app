@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% import 'partials/_icons.html' as icons %}
+{% from 'partials/_section_header.html' import section_header %}
+
+{% block title %}Contact - {{ cv.personal.name }}{% endblock %}
+{% block description %}Get in touch with {{ cv.personal.name }}, {{ cv.personal.title }}.{% endblock %}
+
+{% macro field_error(name) -%}
+    {% if form.errors.get(name) %}<p class="field-error" id="{{ name }}-error" role="alert">{{ form.errors[name] }}</p>{% endif %}
+{%- endmacro %}
+
+{% block content %}
+<header class="page-header" data-reveal>
+    <h1 class="page-title">Get in Touch</h1>
+    <p class="page-subtitle">Recruiting, consulting, or just want to talk data engineering? Drop me a line and I'll reply as soon as I can.</p>
+</header>
+
+<main class="page-main contact-layout">
+    <aside class="cv-card contact-info" data-reveal>
+        {{ section_header('📇', 'Contact Details') }}
+        <ul class="contact-list">
+            <li>
+                {{ icons.mail() }}
+                <div>
+                    <span class="contact-label">Email</span>
+                    <a href="mailto:{{ cv.personal.email }}">{{ cv.personal.email }}</a>
+                </div>
+            </li>
+            <li>
+                {{ icons.phone() }}
+                <div>
+                    <span class="contact-label">Phone</span>
+                    <a href="tel:{{ cv.personal.phone }}">{{ cv.personal.phone }}</a>
+                </div>
+            </li>
+            <li>
+                {{ icons.linkedin() }}
+                <div>
+                    <span class="contact-label">LinkedIn</span>
+                    <a href="{{ cv.personal.linkedin }}" target="_blank" rel="noopener noreferrer">{{ cv.personal.linkedin_display }}</a>
+                </div>
+            </li>
+            <li>
+                {{ icons.pin() }}
+                <div>
+                    <span class="contact-label">Location</span>
+                    <span>{{ cv.personal.location }}</span>
+                </div>
+            </li>
+        </ul>
+        <p class="contact-note">Messages sent through this form go straight to my inbox. I usually respond within one or two business days.</p>
+    </aside>
+
+    <section class="cv-card contact-form-card" data-reveal>
+        {{ section_header('✉️', 'Send a Message') }}
+
+        {% if form_error %}
+        <div class="flash flash-error" role="alert">
+            <span class="flash-icon">!</span>
+            <span>{{ form_error }}</span>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('contact.submit') }}" class="contact-form" id="contact-form" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {# Honeypot: hidden from humans, tempting for bots. #}
+            <div class="hp-field" aria-hidden="true">
+                <label for="website">Website</label>
+                <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" value="">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group {% if form.errors.get('name') %}has-error{% endif %}">
+                    <label for="name">Name <span class="required">*</span></label>
+                    <input type="text" id="name" name="name" value="{{ form.name }}" required minlength="2" maxlength="100" autocomplete="name" placeholder="Jane Doe"
+                           {% if form.errors.get('name') %}aria-invalid="true" aria-describedby="name-error"{% endif %}>
+                    {{ field_error('name') }}
+                </div>
+                <div class="form-group {% if form.errors.get('email') %}has-error{% endif %}">
+                    <label for="email">Email <span class="required">*</span></label>
+                    <input type="email" id="email" name="email" value="{{ form.email }}" required maxlength="254" autocomplete="email" placeholder="jane@example.com"
+                           {% if form.errors.get('email') %}aria-invalid="true" aria-describedby="email-error"{% endif %}>
+                    {{ field_error('email') }}
+                </div>
+            </div>
+
+            <div class="form-group {% if form.errors.get('subject') %}has-error{% endif %}">
+                <label for="subject">Subject <span class="optional">(optional)</span></label>
+                <input type="text" id="subject" name="subject" value="{{ form.subject }}" maxlength="150" placeholder="Senior Data Engineer opportunity"
+                       {% if form.errors.get('subject') %}aria-invalid="true" aria-describedby="subject-error"{% endif %}>
+                {{ field_error('subject') }}
+            </div>
+
+            <div class="form-group {% if form.errors.get('message') %}has-error{% endif %}">
+                <label for="message">Message <span class="required">*</span></label>
+                <textarea id="message" name="message" rows="7" required minlength="10" maxlength="5000" placeholder="Tell me about the role, project or question you have in mind..."
+                          {% if form.errors.get('message') %}aria-invalid="true" aria-describedby="message-error"{% endif %}>{{ form.message }}</textarea>
+                <div class="field-footer">
+                    {{ field_error('message') }}
+                    <span class="char-counter" id="message-counter" data-max="5000" aria-live="polite"></span>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="contact-submit">
+                    {{ icons.send() }}
+                    <span>Send message</span>
+                </button>
+                <span class="form-hint">Fields marked <span class="required">*</span> are required.</span>
+            </div>
+        </form>
+    </section>
+</main>
+{% endblock %}
