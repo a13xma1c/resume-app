@@ -32,7 +32,7 @@ def form() -> ContactForm:
 # --- build_contact_email -------------------------------------------------------
 
 
-def test_build_contact_email_headers(form):
+def test_build_contact_email_headers(form: ContactForm) -> None:
     fixed = datetime(2025, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
     msg = build_contact_email(
         form, sender="noreply@site.example", recipient="owner@site.example", remote_addr="203.0.113.7", now=fixed
@@ -48,7 +48,7 @@ def test_build_contact_email_headers(form):
     assert msg.get_content_type() == "text/plain"
 
 
-def test_build_contact_email_body(form):
+def test_build_contact_email_body(form: ContactForm) -> None:
     fixed = datetime(2025, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
     msg = build_contact_email(form, sender="a@b.co", recipient="c@d.co", remote_addr="203.0.113.7", now=fixed)
     body = msg.get_content()
@@ -61,7 +61,7 @@ def test_build_contact_email_body(form):
     assert form.message in body
 
 
-def test_build_contact_email_without_ip_or_subject(form):
+def test_build_contact_email_without_ip_or_subject(form: ContactForm) -> None:
     form.subject = ""
     msg = build_contact_email(form, sender="a@b.co", recipient="c@d.co")
     assert msg["Subject"] == "[CV Contact] New message from Jane Doe"
@@ -70,12 +70,15 @@ def test_build_contact_email_without_ip_or_subject(form):
     assert "IP:" not in body
 
 
-def test_build_contact_email_custom_or_empty_prefix(form):
-    assert build_contact_email(form, sender="a@b.co", recipient="c@d.co", subject_prefix="[Site]")["Subject"] == "[Site] Opportunity"
+def test_build_contact_email_custom_or_empty_prefix(form: ContactForm) -> None:
+    assert (
+        build_contact_email(form, sender="a@b.co", recipient="c@d.co", subject_prefix="[Site]")["Subject"]
+        == "[Site] Opportunity"
+    )
     assert build_contact_email(form, sender="a@b.co", recipient="c@d.co", subject_prefix="")["Subject"] == "Opportunity"
 
 
-def test_build_contact_email_defaults_to_now(form):
+def test_build_contact_email_defaults_to_now(form: ContactForm) -> None:
     before = datetime.now(timezone.utc).replace(microsecond=0)
     msg = build_contact_email(form, sender="a@b.co", recipient="c@d.co")
     sent_line = next(line for line in msg.get_content().splitlines() if line.startswith("Sent:"))
@@ -83,7 +86,7 @@ def test_build_contact_email_defaults_to_now(form):
     assert sent >= before
 
 
-def test_build_contact_email_handles_unicode(form):
+def test_build_contact_email_handles_unicode(form: ContactForm) -> None:
     form.name = "Zoë Müller"
     form.message = "Salut! Ça va? 🚀 " * 5
     msg = build_contact_email(form, sender="a@b.co", recipient="c@d.co")
@@ -94,7 +97,7 @@ def test_build_contact_email_handles_unicode(form):
     assert b"Content-Transfer-Encoding" in raw
 
 
-def test_build_contact_email_name_with_special_chars_is_quoted(form):
+def test_build_contact_email_name_with_special_chars_is_quoted(form: ContactForm) -> None:
     form.name = 'Doe, Jane "JD"'
     msg = build_contact_email(form, sender="a@b.co", recipient="c@d.co")
     assert msg["Reply-To"].endswith("<jane@example.com>")
@@ -114,7 +117,7 @@ def message() -> EmailMessage:
     return msg
 
 
-def _smtp_mock():
+def _smtp_mock() -> tuple[mock.MagicMock, mock.MagicMock]:
     """Return (class_mock, instance_mock) wired so ``with SMTP(...) as s`` yields instance."""
     instance = mock.MagicMock()
     cls = mock.MagicMock(return_value=instance)
@@ -123,7 +126,7 @@ def _smtp_mock():
     return cls, instance
 
 
-def test_smtp_mailer_starttls_and_login(message):
+def test_smtp_mailer_starttls_and_login(message: EmailMessage) -> None:
     cls, smtp = _smtp_mock()
     with mock.patch("resumeapp.mail.smtplib.SMTP", cls):
         mailer = SMTPMailer("smtp.example.com", 587, username="user", password="pw", use_tls=True, timeout=7)
@@ -138,7 +141,7 @@ def test_smtp_mailer_starttls_and_login(message):
     assert calls == ["starttls", "login", "send_message"]
 
 
-def test_smtp_mailer_implicit_ssl(message):
+def test_smtp_mailer_implicit_ssl(message: EmailMessage) -> None:
     cls, smtp = _smtp_mock()
     with mock.patch("resumeapp.mail.smtplib.SMTP_SSL", cls), mock.patch("resumeapp.mail.smtplib.SMTP") as plain:
         mailer = SMTPMailer("smtp.example.com", 465, use_tls=False, use_ssl=True)
@@ -151,7 +154,7 @@ def test_smtp_mailer_implicit_ssl(message):
     smtp.send_message.assert_called_once_with(message)
 
 
-def test_smtp_mailer_plaintext_without_auth(message):
+def test_smtp_mailer_plaintext_without_auth(message: EmailMessage) -> None:
     cls, smtp = _smtp_mock()
     with mock.patch("resumeapp.mail.smtplib.SMTP", cls):
         SMTPMailer("localhost", 25, use_tls=False).send(message)
@@ -160,14 +163,14 @@ def test_smtp_mailer_plaintext_without_auth(message):
     smtp.send_message.assert_called_once()
 
 
-def test_smtp_mailer_login_with_username_but_no_password(message):
+def test_smtp_mailer_login_with_username_but_no_password(message: EmailMessage) -> None:
     cls, smtp = _smtp_mock()
     with mock.patch("resumeapp.mail.smtplib.SMTP", cls):
         SMTPMailer("localhost", 25, username="user", use_tls=False).send(message)
     smtp.login.assert_called_once_with("user", "")
 
 
-def test_smtp_mailer_rejects_tls_and_ssl_together():
+def test_smtp_mailer_rejects_tls_and_ssl_together() -> None:
     with pytest.raises(ValueError, match="mutually exclusive"):
         SMTPMailer("host", use_tls=True, use_ssl=True)
 
@@ -183,7 +186,9 @@ def test_smtp_mailer_rejects_tls_and_ssl_together():
         OSError("network unreachable"),
     ],
 )
-def test_smtp_mailer_wraps_transport_errors(message, exc, caplog):
+def test_smtp_mailer_wraps_transport_errors(
+    message: EmailMessage, exc: Exception, caplog: pytest.LogCaptureFixture
+) -> None:
     cls, smtp = _smtp_mock()
     smtp.send_message.side_effect = exc
     with mock.patch("resumeapp.mail.smtplib.SMTP", cls), caplog.at_level(logging.ERROR):
@@ -193,14 +198,14 @@ def test_smtp_mailer_wraps_transport_errors(message, exc, caplog):
     assert "SMTP delivery to smtp.example.com failed" in caplog.text
 
 
-def test_smtp_mailer_wraps_connection_errors(message):
+def test_smtp_mailer_wraps_connection_errors(message: EmailMessage) -> None:
     cls = mock.MagicMock(side_effect=ConnectionRefusedError("refused"))
     with mock.patch("resumeapp.mail.smtplib.SMTP", cls):
         with pytest.raises(MailDeliveryError, match="refused"):
             SMTPMailer("smtp.example.com", use_tls=False).send(message)
 
 
-def test_smtp_mailer_does_not_swallow_unrelated_errors(message):
+def test_smtp_mailer_does_not_swallow_unrelated_errors(message: EmailMessage) -> None:
     cls, smtp = _smtp_mock()
     smtp.send_message.side_effect = ValueError("programming error")
     with mock.patch("resumeapp.mail.smtplib.SMTP", cls):
@@ -208,7 +213,7 @@ def test_smtp_mailer_does_not_swallow_unrelated_errors(message):
             SMTPMailer("smtp.example.com", use_tls=False).send(message)
 
 
-def test_smtp_mailer_logs_success(message, caplog):
+def test_smtp_mailer_logs_success(message: EmailMessage, caplog: pytest.LogCaptureFixture) -> None:
     cls, _ = _smtp_mock()
     with mock.patch("resumeapp.mail.smtplib.SMTP", cls), caplog.at_level(logging.INFO):
         SMTPMailer("smtp.example.com", use_tls=False).send(message)
@@ -218,7 +223,7 @@ def test_smtp_mailer_logs_success(message, caplog):
 # --- ConsoleMailer -------------------------------------------------------------
 
 
-def test_console_mailer_logs_and_records(message, caplog):
+def test_console_mailer_logs_and_records(message: EmailMessage, caplog: pytest.LogCaptureFixture) -> None:
     log = logging.getLogger("test.console.mailer")
     mailer = ConsoleMailer(log)
     with caplog.at_level(logging.INFO, logger="test.console.mailer"):
@@ -229,7 +234,7 @@ def test_console_mailer_logs_and_records(message, caplog):
     assert "Body" in caplog.text
 
 
-def test_console_mailer_uses_module_logger_by_default(message, caplog):
+def test_console_mailer_uses_module_logger_by_default(message: EmailMessage, caplog: pytest.LogCaptureFixture) -> None:
     mailer = ConsoleMailer()
     with caplog.at_level(logging.INFO, logger="resumeapp.mail"):
         mailer.send(message)

@@ -6,12 +6,13 @@ import logging
 import os
 from collections.abc import Mapping
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
-from flask import Flask, render_template
+from flask import Flask, Response, render_template
 from werkzeug.exceptions import HTTPException
 
-from .config import BASE_DIR, load_config
+from .config import BASE_DIR, load_config, parse_bool
 from .cv_data import CV_DATA
 from .mail import ConsoleMailer, Mailer, SMTPMailer
 from .security import RateLimiter, generate_csrf_token
@@ -78,9 +79,7 @@ def create_app(
         )
 
     app.extensions["mailer"] = mailer or create_mailer(app.config, app.logger)
-    app.extensions["rate_limiter"] = RateLimiter(
-        app.config["CONTACT_RATE_LIMIT"], app.config["CONTACT_RATE_WINDOW"]
-    )
+    app.extensions["rate_limiter"] = RateLimiter(app.config["CONTACT_RATE_LIMIT"], app.config["CONTACT_RATE_WINDOW"])
 
     app.register_blueprint(pages_bp)
     app.register_blueprint(contact_bp)
@@ -97,31 +96,57 @@ def create_app(
         }
 
     @app.after_request
-    def set_security_headers(response):
+    def set_security_headers(response: Response) -> Response:
         for header, value in SECURITY_HEADERS.items():
             response.headers.setdefault(header, value)
         return response
 
     @app.errorhandler(HTTPException)
-    def handle_http_error(error: HTTPException):
+    def handle_http_error(error: HTTPException) -> tuple[str, int]:
+        code = error.code or 500
         return (
             render_template(
                 "error.html",
-                code=error.code,
+                code=code,
                 name=error.name,
                 description=error.description,
             ),
-            error.code,
+            code,
         )
 
     return app
 
 
 def main() -> None:
-    """Entry point for the ``resumeapp`` CLI runner."""
-    app = create_app()
+    """Entry point for the ``resumeapp`` CLI runner.
+
+    Set ``DEV_SMTP=1`` to also start the bundled SMTP server in-process and
+    route contact-form emails to it (saved under ``DEV_SMTP_MAILDIR``,
+    default ``./mail-outbox``). Handy for trying the form locally without
+    any external mail provider.
+    """
     port = int(os.environ.get("PORT", "5123"))
-    debug = os.environ.get("FLASK_DEBUG", "1").lower() in {"1", "true", "yes", "on"}
+    debug = parse_bool(os.environ.get("FLASK_DEBUG"), default=True)
+
+    if parse_bool(os.environ.get("DEV_SMTP"), default=False):
+        from .smtp_server import DevSMTPServer
+
+        maildir = Path(os.environ.get("DEV_SMTP_MAILDIR") or "mail-outbox")
+        smtp_port = int(os.environ.get("DEV_SMTP_PORT", "0"))
+        with DevSMTPServer(port=smtp_port, maildir=maildir) as smtp:
+            app = create_app(smtp.mail_config())
+            app.logger.info(
+                "Dev SMTP server on %s:%s - contact emails will be saved to %s",
+                smtp.host,
+                smtp.port,
+                maildir.resolve(),
+            )
+            # The reloader re-executes this module in a child process, which
+            # would start a second SMTP server on the same port.
+            app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=False)
+        return
+
+    app = create_app()
     app.run(host="0.0.0.0", port=port, debug=debug)
 
 

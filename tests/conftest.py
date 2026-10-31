@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from flask import Flask
@@ -11,6 +12,19 @@ from flask.testing import FlaskClient
 from resumeapp import create_app
 
 from .helpers import RecordingMailer, extract_csrf_token
+
+E2E_DIR = Path(__file__).parent / "e2e"
+LOAD_DIR = Path(__file__).parent / "load"
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Mark browser and load tests by location so they can be selected with ``-m``."""
+    for item in items:
+        path = Path(str(item.fspath))
+        if E2E_DIR in path.parents:
+            item.add_marker(pytest.mark.e2e)
+        elif LOAD_DIR in path.parents:
+            item.add_marker(pytest.mark.load)
 
 
 @pytest.fixture
@@ -27,7 +41,7 @@ def pdf_file(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def app_config(pdf_file: Path) -> dict:
+def app_config(pdf_file: Path) -> dict[str, Any]:
     return {
         "TESTING": True,
         "SECRET_KEY": "test-secret-key",
@@ -40,7 +54,7 @@ def app_config(pdf_file: Path) -> dict:
 
 
 @pytest.fixture
-def app(app_config: dict, mailer: RecordingMailer) -> Flask:
+def app(app_config: dict[str, Any], mailer: RecordingMailer) -> Flask:
     return create_app(app_config, mailer=mailer)
 
 

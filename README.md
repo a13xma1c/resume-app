@@ -20,6 +20,8 @@ A modern, responsive, multi-page CV & Portfolio website built with **Python**, *
 - **REST API**: `/api/cv` JSON endpoint providing the full structured resume data.
 - **Print Optimisation**: Tailored `@media print` stylesheet for clean physical prints or browser PDF exports.
 - **Hardened by default**: CSRF tokens, honeypot spam trap, per-IP rate limiting, header-injection checks, request size limit, custom error pages and security headers.
+- **Bundled SMTP server** (`resumeapp-smtp`) that receives contact-form emails locally and saves them as `.eml` files — for development, end-to-end tests and load tests.
+- **Fully typed** (`mypy --strict` on the app *and* the tests) with unit, integration, Playwright browser and Locust load test suites.
 
 ---
 
@@ -45,7 +47,7 @@ uv run flask --app app run --port 5000
 
 Open [http://localhost:5123](http://localhost:5123) (or the port you chose) in your web browser.
 
-> Without any configuration the site works fully; contact-form messages are **logged to the console** instead of emailed. See below to enable real delivery.
+> Without any configuration the site works fully; contact-form messages are **logged to the console** instead of emailed. To actually *receive* them locally, run with the bundled SMTP server: `DEV_SMTP=1 uv run resumeapp` (see [SMTP server](#smtp-server)). For real delivery, configure an SMTP provider as described below.
 
 ---
 
@@ -100,6 +102,37 @@ export MAIL_PASSWORD="xxxx xxxx xxxx xxxx"
 uv run resumeapp
 ```
 
+### SMTP server
+
+The project ships its own SMTP server (built on [aiosmtpd](https://aiosmtpd.readthedocs.io)) so you can see exactly what the form sends without an external provider. It accepts mail on a local port, keeps messages in memory and writes each one to a directory as an `.eml` file that any mail client can open. It never relays anything.
+
+**Option A – everything in one process**
+
+```bash
+DEV_SMTP=1 uv run resumeapp
+# contact emails are delivered over SMTP to the embedded server and saved to ./mail-outbox/*.eml
+```
+
+`DEV_SMTP_PORT` (default `0` = free port) and `DEV_SMTP_MAILDIR` (default `mail-outbox`) tune it.
+
+**Option B – standalone server** (e.g. to share it between the app, Locust and a mail client)
+
+```bash
+uv run resumeapp-smtp --port 1025 --maildir ./mail-outbox      # add --user/--password to require AUTH
+MAIL_SERVER=127.0.0.1 MAIL_PORT=1025 MAIL_USE_TLS=false uv run resumeapp
+```
+
+Programmatic use (this is what the test suites do):
+
+```python
+from resumeapp.smtp_server import DevSMTPServer
+
+with DevSMTPServer(port=0) as smtp:                  # port 0 → pick a free one
+    app = create_app(smtp.mail_config())             # points MAIL_* at the server
+    ...
+    message = smtp.wait_for_messages(1)[0]           # StoredMessage: subject, body, rcpt_tos, path…
+```
+
 > The rate limiter is in-memory and therefore per-process; if you deploy with several workers, each worker keeps its own counters. Behind a reverse proxy, wrap the app with Werkzeug's `ProxyFix` so `request.remote_addr` reflects the real client IP.
 
 ---
@@ -115,28 +148,50 @@ src/resumeapp/
   forms.py                  # ContactForm validation
   mail.py                   # email composition + SMTP / console transports
   security.py               # CSRF helpers and rate limiter
+  smtp_server.py            # bundled SMTP server (DevSMTPServer + `resumeapp-smtp` CLI)
   views/                    # blueprints: pages, contact, api
 templates/                  # Jinja templates (base layout, pages, partials/)
 static/                     # CSS & JS
-tests/                      # pytest suite
+loadtests/                  # Locust locustfiles (flat and staged ramp profiles)
+tests/                      # unit & integration tests (fully typed)
+  e2e/                      # Playwright browser tests (marker: e2e)
+  load/                     # Locust-driven volumetric tests (marker: load)
 ```
 
 ---
 
 ## Testing
 
-Run the test suite with `pytest`:
+All test code is type-annotated and checked with `mypy --strict` alongside the application code:
+
+```bash
+uv run mypy            # checks src/, tests/ and loadtests/
+```
+
+### Unit & integration tests (default)
 
 ```bash
 uv run pytest
 ```
 
-The suite (~250 tests) covers:
+~280 fast tests, no network or browser needed. They cover every page (content, navigation, titles, error pages, security headers), the JSON API and PDF endpoints, the contact form end-to-end (success path, every validation rule, CSRF, honeypot, rate limiting, delivery failures, XSS/header-injection attempts, payload limits), and unit tests for form validation, email building, the SMTP/console mailers, CSRF helpers, the rate limiter, configuration parsing, the app factory, the CLI entry points and the CV data. The SMTP server tests perform **real SMTP conversations** over loopback — `SMTPMailer` → `DevSMTPServer` — including AUTH success/failure and a full web-form → SMTP round trip.
 
-- every page (content, navigation, active links, titles, error pages, security headers);
-- the JSON API and PDF endpoints (including the missing-file case, using a temporary PDF);
-- the contact form end-to-end: success path and email contents, every validation rule, CSRF, honeypot, rate limiting, delivery failures, XSS/header-injection attempts, payload limits;
-- unit tests for form validation, email building, SMTP/console mailers (with `smtplib` mocked), CSRF helpers, the rate limiter (including thread safety), configuration parsing, the app factory and the CLI entry point;
-- integrity checks on the CV data itself.
+### Browser tests (Playwright)
 
-No network access or real mail server is needed.
+```bash
+uv run playwright install chromium   # once
+uv run pytest -m e2e                 # add --headed to watch, --browser firefox/webkit for others
+```
+
+40 tests drive a real Chromium against a live Flask server **and** a live SMTP server: navigation and active links, theme toggle persistence (incl. `prefers-color-scheme`), the mobile menu, clipboard copy, PDF download, the experience filter (typing, tag clicks, keyboard, `?q=` deep links from other pages, empty state), and the contact form — HTML5 validation, server-side errors with focus management, the "Sending…" state, Unicode and 5 000-character messages, honeypot, flash lifecycle — asserting on the email that actually arrives at the SMTP server.
+
+### Load tests (Locust)
+
+```bash
+uv run pytest -m load                                   # from pytest (≈10 s run, asserts on results)
+LOAD_USERS=100 LOAD_DURATION=60 uv run pytest -m load   # heavier run
+```
+
+The pytest wrapper starts the app and SMTP server, runs Locust headless as a subprocess, and asserts on the collected statistics: zero failed requests, p95 latency within budget for every endpoint, traffic on every page, and that each accepted contact submission produced an email while invalid/honeypot submissions produced none.
+
+For interactive or long-running load tests against any deployment, see [`loadtests/README.md`](loadtests/README.md) — thresholds are enforced via the process exit code so the run can gate CI.

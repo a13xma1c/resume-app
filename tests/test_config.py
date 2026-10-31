@@ -7,33 +7,32 @@ import pytest
 from resumeapp.config import DEFAULT_PDF_PATH, load_config, parse_bool, parse_int
 from resumeapp.cv_data import CV_DATA
 
-
 # --- parsers -------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("value", ["1", "true", "TRUE", " yes ", "on", "On"])
-def test_parse_bool_truthy(value):
+def test_parse_bool_truthy(value: str) -> None:
     assert parse_bool(value) is True
 
 
 @pytest.mark.parametrize("value", ["0", "false", "False", "no", "off", ""])
-def test_parse_bool_falsy(value):
+def test_parse_bool_falsy(value: str) -> None:
     assert parse_bool(value, default=True) is False
 
 
-def test_parse_bool_none_uses_default():
+def test_parse_bool_none_uses_default() -> None:
     assert parse_bool(None) is False
     assert parse_bool(None, default=True) is True
 
 
-def test_parse_bool_passthrough_and_invalid():
+def test_parse_bool_passthrough_and_invalid() -> None:
     assert parse_bool(True) is True
     assert parse_bool(False) is False
     with pytest.raises(ValueError, match="Invalid boolean"):
         parse_bool("maybe")
 
 
-def test_parse_int():
+def test_parse_int() -> None:
     assert parse_int(None, 7) == 7
     assert parse_int("", 7) == 7
     assert parse_int(" 42 ", 7) == 42
@@ -48,7 +47,7 @@ def test_parse_int():
 # --- load_config ---------------------------------------------------------------
 
 
-def test_defaults_when_environment_is_empty():
+def test_defaults_when_environment_is_empty() -> None:
     cfg = load_config({})
     assert cfg["SECRET_KEY"] and cfg["SECRET_KEY_IS_EPHEMERAL"] is True
     assert cfg["CV_PDF_PATH"] == str(DEFAULT_PDF_PATH)
@@ -71,11 +70,11 @@ def test_defaults_when_environment_is_empty():
     assert cfg["MAX_CONTENT_LENGTH"] == 64 * 1024
 
 
-def test_ephemeral_secret_keys_differ_between_loads():
+def test_ephemeral_secret_keys_differ_between_loads() -> None:
     assert load_config({})["SECRET_KEY"] != load_config({})["SECRET_KEY"]
 
 
-def test_full_environment_is_honoured():
+def test_full_environment_is_honoured() -> None:
     env = {
         "SECRET_KEY": "s3cret",
         "CV_PDF_PATH": "/tmp/cv.pdf",
@@ -112,24 +111,24 @@ def test_full_environment_is_honoured():
     assert cfg["MAIL_TIMEOUT"] == 30
 
 
-def test_ssl_implies_port_465_and_disables_starttls():
+def test_ssl_implies_port_465_and_disables_starttls() -> None:
     cfg = load_config({"MAIL_USE_SSL": "true"})
     assert cfg["MAIL_USE_SSL"] is True
     assert cfg["MAIL_USE_TLS"] is False
     assert cfg["MAIL_PORT"] == 465
 
 
-def test_explicit_port_wins_over_ssl_default():
+def test_explicit_port_wins_over_ssl_default() -> None:
     cfg = load_config({"MAIL_USE_SSL": "true", "MAIL_PORT": "8465"})
     assert cfg["MAIL_PORT"] == 8465
 
 
-def test_default_sender_falls_back_to_username():
+def test_default_sender_falls_back_to_username() -> None:
     cfg = load_config({"MAIL_USERNAME": "alex@example.com"})
     assert cfg["MAIL_DEFAULT_SENDER"] == "alex@example.com"
 
 
-def test_empty_strings_are_treated_as_unset():
+def test_empty_strings_are_treated_as_unset() -> None:
     cfg = load_config({"MAIL_SERVER": "", "MAIL_USERNAME": "", "SECRET_KEY": "", "CONTACT_RECIPIENT": ""})
     assert cfg["MAIL_SERVER"] is None
     assert cfg["MAIL_USERNAME"] is None
@@ -137,7 +136,7 @@ def test_empty_strings_are_treated_as_unset():
     assert cfg["CONTACT_RECIPIENT"] == CV_DATA["personal"]["email"]
 
 
-def test_empty_subject_prefix_is_allowed():
+def test_empty_subject_prefix_is_allowed() -> None:
     assert load_config({"CONTACT_SUBJECT_PREFIX": ""})["CONTACT_SUBJECT_PREFIX"] == ""
 
 
@@ -151,11 +150,11 @@ def test_empty_subject_prefix_is_allowed():
         {"MAIL_TIMEOUT": "0"},
     ],
 )
-def test_invalid_values_raise(env):
+def test_invalid_values_raise(env: dict[str, str]) -> None:
     with pytest.raises(ValueError):
         load_config(env)
 
 
-def test_load_config_reads_os_environ_by_default(monkeypatch):
+def test_load_config_reads_os_environ_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CONTACT_RECIPIENT", "env@example.com")
     assert load_config()["CONTACT_RECIPIENT"] == "env@example.com"

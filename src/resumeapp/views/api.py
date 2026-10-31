@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flask import Blueprint, abort, current_app, jsonify, send_file
+from flask import Blueprint, Response, abort, current_app, jsonify, send_file
 
 from ..cv_data import CV_DATA
 
@@ -15,7 +15,7 @@ def _pdf_path() -> Path:
     return Path(current_app.config["CV_PDF_PATH"])
 
 
-def _send_pdf(as_attachment: bool):
+def _send_pdf(as_attachment: bool) -> Response:
     path = _pdf_path()
     if not path.is_file():
         abort(404, description="CV PDF file not found.")
@@ -29,15 +29,15 @@ def _send_pdf(as_attachment: bool):
 
 
 @bp.route("/api/cv")
-def cv():
+def cv() -> Response:
     return jsonify(CV_DATA)
 
 
 @bp.route("/download-pdf")
-def download_pdf():
+def download_pdf() -> Response:
     return _send_pdf(as_attachment=True)
 
 
 @bp.route("/view-pdf")
-def view_pdf():
+def view_pdf() -> Response:
     return _send_pdf(as_attachment=False)

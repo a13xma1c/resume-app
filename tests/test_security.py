@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 
 import pytest
+from flask import Flask
 
 from resumeapp.security import (
     CSRF_SESSION_KEY,
@@ -13,11 +14,10 @@ from resumeapp.security import (
     validate_csrf_token,
 )
 
-
 # --- CSRF ----------------------------------------------------------------------
 
 
-def test_generate_csrf_token_stores_in_session_and_is_idempotent(app):
+def test_generate_csrf_token_stores_in_session_and_is_idempotent(app: Flask) -> None:
     with app.test_request_context():
         from flask import session
 
@@ -27,7 +27,7 @@ def test_generate_csrf_token_stores_in_session_and_is_idempotent(app):
         assert len(token) >= 32
 
 
-def test_generate_csrf_token_is_unique_per_session(app):
+def test_generate_csrf_token_is_unique_per_session(app: Flask) -> None:
     with app.test_request_context():
         first = generate_csrf_token()
     with app.test_request_context():
@@ -35,7 +35,7 @@ def test_generate_csrf_token_is_unique_per_session(app):
     assert first != second
 
 
-def test_validate_csrf_token(app):
+def test_validate_csrf_token(app: Flask) -> None:
     with app.test_request_context():
         token = generate_csrf_token()
         assert validate_csrf_token(token) is True
@@ -45,12 +45,12 @@ def test_validate_csrf_token(app):
         assert validate_csrf_token(None) is False
 
 
-def test_validate_csrf_token_without_session_token(app):
+def test_validate_csrf_token_without_session_token(app: Flask) -> None:
     with app.test_request_context():
         assert validate_csrf_token("anything") is False
 
 
-def test_csrf_token_helper_available_in_templates(app):
+def test_csrf_token_helper_available_in_templates(app: Flask) -> None:
     from flask import render_template_string, session
 
     with app.test_request_context():
@@ -77,14 +77,14 @@ def clock() -> FakeClock:
     return FakeClock()
 
 
-def test_allows_up_to_limit_then_blocks(clock):
+def test_allows_up_to_limit_then_blocks(clock: FakeClock) -> None:
     limiter = RateLimiter(3, 60, clock=clock)
     assert [limiter.hit("a") for _ in range(3)] == [True, True, True]
     assert limiter.hit("a") is False
     assert limiter.remaining("a") == 0
 
 
-def test_blocked_hits_are_not_recorded(clock):
+def test_blocked_hits_are_not_recorded(clock: FakeClock) -> None:
     limiter = RateLimiter(1, 60, clock=clock)
     assert limiter.hit("a")
     for _ in range(5):
@@ -93,7 +93,7 @@ def test_blocked_hits_are_not_recorded(clock):
     assert limiter.hit("a")  # window cleared even though we kept hammering
 
 
-def test_window_slides(clock):
+def test_window_slides(clock: FakeClock) -> None:
     limiter = RateLimiter(2, 10, clock=clock)
     assert limiter.hit("a")  # t=1000
     clock.advance(5)
@@ -106,7 +106,7 @@ def test_window_slides(clock):
     assert limiter.hit("a")
 
 
-def test_keys_are_independent(clock):
+def test_keys_are_independent(clock: FakeClock) -> None:
     limiter = RateLimiter(1, 60, clock=clock)
     assert limiter.hit("a")
     assert limiter.hit("b")
@@ -114,7 +114,7 @@ def test_keys_are_independent(clock):
     assert not limiter.hit("b")
 
 
-def test_remaining(clock):
+def test_remaining(clock: FakeClock) -> None:
     limiter = RateLimiter(3, 60, clock=clock)
     assert limiter.remaining("a") == 3
     limiter.hit("a")
@@ -126,7 +126,7 @@ def test_remaining(clock):
     assert limiter.remaining("a") == 3
 
 
-def test_reset_single_key_and_all(clock):
+def test_reset_single_key_and_all(clock: FakeClock) -> None:
     limiter = RateLimiter(1, 60, clock=clock)
     limiter.hit("a")
     limiter.hit("b")
@@ -137,31 +137,31 @@ def test_reset_single_key_and_all(clock):
     assert limiter.hit("b")
 
 
-def test_limit_zero_disables_limiting(clock):
+def test_limit_zero_disables_limiting(clock: FakeClock) -> None:
     limiter = RateLimiter(0, 60, clock=clock)
     assert all(limiter.hit("a") for _ in range(1000))
     assert limiter.remaining("a") > 1_000_000
 
 
 @pytest.mark.parametrize("limit,window", [(-1, 60), (1, 0), (1, -5)])
-def test_invalid_parameters_rejected(limit, window):
+def test_invalid_parameters_rejected(limit: int, window: int) -> None:
     with pytest.raises(ValueError):
         RateLimiter(limit, window)
 
 
-def test_default_clock_is_monotonic():
+def test_default_clock_is_monotonic() -> None:
     limiter = RateLimiter(2, 60)
     assert limiter.hit("a")
     assert limiter.hit("a")
     assert not limiter.hit("a")
 
 
-def test_thread_safety_under_contention():
+def test_thread_safety_under_contention() -> None:
     limiter = RateLimiter(50, 60)
     successes: list[bool] = []
     lock = threading.Lock()
 
-    def worker():
+    def worker() -> None:
         for _ in range(20):
             ok = limiter.hit("shared")
             with lock:

@@ -22,13 +22,13 @@ def _stats() -> dict[str, int]:
 
 
 @bp.route("/")
-def home():
+def home() -> str:
     current_role = next((exp for exp in CV_DATA["experience"] if exp.get("is_current")), None)
     return render_template("home.html", stats=_stats(), current_role=current_role)
 
 
 @bp.route("/experience")
-def experience():
+def experience() -> str:
     # Every distinct technology across roles, for the filter "quick picks".
     seen: dict[str, None] = {}
     for exp in CV_DATA["experience"]:
@@ -38,15 +38,15 @@ def experience():
 
 
 @bp.route("/skills")
-def skills():
+def skills() -> str:
     return render_template("skills.html")
 
 
 @bp.route("/education")
-def education():
+def education() -> str:
     return render_template("education.html")
 
 
 @bp.route("/cv")
-def full_cv():
+def full_cv() -> str:
     return render_template("cv.html")

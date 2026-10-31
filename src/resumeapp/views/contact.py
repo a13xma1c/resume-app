@@ -11,6 +11,7 @@ from flask import (
     request,
     url_for,
 )
+from werkzeug.wrappers import Response
 
 from ..forms import ContactForm
 from ..mail import MailDeliveryError, build_contact_email
@@ -24,7 +25,7 @@ RATE_LIMIT_ERROR = "You've sent several messages recently. Please wait a while b
 DELIVERY_ERROR = "Sorry, the message could not be sent right now. Please try again later or email me directly."
 
 
-def _render(form: ContactForm, status: int = 200, form_error: str | None = None):
+def _render(form: ContactForm, status: int = 200, form_error: str | None = None) -> tuple[str, int]:
     return (
         render_template("contact.html", form=form, form_error=form_error),
         status,
@@ -32,12 +33,12 @@ def _render(form: ContactForm, status: int = 200, form_error: str | None = None)
 
 
 @bp.route("", methods=["GET"])
-def contact():
+def contact() -> tuple[str, int]:
     return _render(ContactForm())
 
 
 @bp.route("", methods=["POST"])
-def submit():
+def submit() -> Response | tuple[str, int]:
     form = ContactForm.from_mapping(request.form)
 
     if current_app.config["CSRF_ENABLED"] and not validate_csrf_token(request.form.get(CSRF_FORM_FIELD)):
